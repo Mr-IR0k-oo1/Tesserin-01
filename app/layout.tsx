@@ -7,7 +7,7 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Tesserin – Skeuomorphic Creative Workspace',
+  title: 'Tessaradraw – Skeuomorphic Creative Workspace',
   description: 'A premium skeuomorphic workspace with force-directed graphs, canvas drawing, editor, and system gadgets. Ceramic White & Obsidian Black palettes.',
   generator: 'v0.app',
   icons: {

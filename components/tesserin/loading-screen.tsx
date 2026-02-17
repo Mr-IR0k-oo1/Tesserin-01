@@ -22,7 +22,7 @@ export function LoadingScreen() {
       className="fixed inset-0 z-[100] flex flex-col items-center justify-center"
       style={{ backgroundColor: "#eef2f6" }}
       role="status"
-      aria-label="Loading Tesserin"
+      aria-label="Loading Tessaradraw"
     >
       <TesserinLogo size={120} animated />
 

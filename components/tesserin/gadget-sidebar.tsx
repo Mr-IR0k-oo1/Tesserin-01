@@ -269,7 +269,7 @@ export function GadgetSidebar() {
         <button
           onClick={() => setExpanded(true)}
           className="skeuo-btn w-12 h-12 flex items-center justify-center rounded-xl relative group"
-          aria-label="Open Tesserin Gadgets"
+          aria-label="Open Tessaradraw"
           style={{ boxShadow: "0 4px 16px rgba(250, 204, 21, 0.15)" }}
         >
           <HiOutlineSparkles size={20} className="text-yellow-500" />
@@ -283,7 +283,7 @@ export function GadgetSidebar() {
             className="absolute right-full mr-3 px-2 py-1 rounded-lg text-[10px] font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
             style={{ backgroundColor: "var(--bg-panel)", color: "var(--text-primary)", boxShadow: "var(--panel-shadow)" }}
           >
-            Tesserin Gadgets
+            Tessaradraw
           </div>
         </button>
       </div>
@@ -300,7 +300,7 @@ export function GadgetSidebar() {
       >
         <div className="flex items-center gap-2 font-bold text-sm" style={{ color: "var(--text-primary)" }}>
           <HiOutlineSparkles size={16} className="text-yellow-500 fill-yellow-500" />
-          TESSERIN GADGETS
+          TESSARADRAW
         </div>
         <button
           onClick={() => setExpanded(false)}

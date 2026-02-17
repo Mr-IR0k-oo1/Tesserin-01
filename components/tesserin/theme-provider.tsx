@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState, useCallback } from "react"
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react"
 
 /**
  * TesserinThemeContext
@@ -187,6 +187,20 @@ export function TesserinThemeProvider({
   defaultDark = false,
 }: ThemeProviderProps) {
   const [isDark, setIsDark] = useState(defaultDark)
+  
+  // Auto-detect system dark mode preference on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+      setIsDark(mediaQuery.matches)
+      
+      // Listen for system theme changes
+      const handler = (e: MediaQueryListEvent) => setIsDark(e.matches)
+      mediaQuery.addEventListener('change', handler)
+      return () => mediaQuery.removeEventListener('change', handler)
+    }
+  }, [])
+  
   const toggleTheme = useCallback(() => setIsDark((prev) => !prev), [])
 
   return (
