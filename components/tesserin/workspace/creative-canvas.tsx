@@ -7,6 +7,7 @@ import {
 import "@excalidraw/excalidraw/index.css"
 import { TesserinLogo } from "../core/tesserin-logo"
 import * as storage from "@/lib/storage-client"
+import { useTesserinTheme } from "@/components/tesserin/core/theme-provider"
 
 /**
  * CreativeCanvas — Tesseradraw
@@ -16,9 +17,12 @@ import * as storage from "@/lib/storage-client"
  */
 
 const DARK_BG = "#121212"
+const LIGHT_BG = "#fdfbf7"
 
 /** Default canvas ID — a single persistent canvas (multi-canvas can be added later) */
 const DEFAULT_CANVAS_ID = "default-canvas"
+/** Storage key for library items across all sessions */
+const LIBRARY_STORAGE_KEY = "tesserin:canvas:library"
 
 /** Fields from appState worth persisting (skip transient UI fields) */
 const PERSIST_APP_STATE_KEYS = [
@@ -40,6 +44,7 @@ const PERSIST_APP_STATE_KEYS = [
 /* ── component ───────────────────────────────────────────── */
 
 export function CreativeCanvas() {
+  const { isDark } = useTesserinTheme()
   const apiRef = useRef<any>(null)
   const canvasIdRef = useRef<string>(DEFAULT_CANVAS_ID)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -52,9 +57,15 @@ export function CreativeCanvas() {
     let cancelled = false
 
     async function loadCanvas() {
-      let canvasData: { elements: any[]; appState: Record<string, any>; files?: any } | null = null
+      let canvasData: { elements: any[]; appState: Record<string, any>; files?: any; libraryItems?: any[] } | null = null
+      let libraryItems: any[] = []
 
       try {
+        // Load library items independently
+        try {
+          const libRaw = localStorage.getItem(LIBRARY_STORAGE_KEY)
+          if (libRaw) libraryItems = JSON.parse(libRaw)
+        } catch { }
         // Try storage API first (SQLite via IPC or localStorage fallback)
         let canvas = await storage.getCanvas(DEFAULT_CANVAS_ID)
 
@@ -88,9 +99,10 @@ export function CreativeCanvas() {
               elements,
               appState: {
                 ...appState,
-                theme: appState.theme || "dark",
+                theme: isDark ? "dark" : "light",
               },
               files: files && Object.keys(files).length > 0 ? files : undefined,
+              libraryItems: libraryItems.length > 0 ? libraryItems : undefined,
             }
           }
         }
@@ -104,7 +116,8 @@ export function CreativeCanvas() {
         } else {
           setInitialData({
             elements: [],
-            appState: { theme: "dark" },
+            appState: { theme: isDark ? "dark" : "light" },
+            libraryItems: libraryItems.length > 0 ? libraryItems : undefined,
           })
         }
         setIsLoaded(true)
@@ -256,6 +269,25 @@ export function CreativeCanvas() {
     [doSave],
   )
 
+  // Triggered when a user adds/removes to their personal Excalidraw library
+  const onLibraryChange = useCallback(
+    (items: any) => {
+      try {
+        localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(items))
+      } catch (err) {
+        console.warn("[Tesserin] Failed to save canvas library:", err)
+      }
+    },
+    [],
+  )
+
+  // Synchronize dynamic theme changes with Excalidraw's API
+  useEffect(() => {
+    if (apiRef.current) {
+      apiRef.current.updateScene({ appState: { theme: isDark ? "dark" : "light" } })
+    }
+  }, [isDark])
+
   /* ── Tesserin-branded CSS overrides for Excalidraw UI chrome ── */
   const brandCSS = `
     /* ── Override Excalidraw's CSS variables to match Tesserin Obsidian Black ── */
@@ -384,24 +416,136 @@ export function CreativeCanvas() {
       --color-surface-default: ${DARK_BG} !important;
       --color-background: ${DARK_BG} !important;
     }
+
+    /* ── OVERRIDE FOR LIGHT (WARM IVORY) PALETTE ── */
+    /* Target via our local wrapper since Excalidraw simply removes .theme--dark rather than adding .theme--light */
+    .tesserin-canvas-light .excalidraw {
+      --island-bg-color: #fdfbf7 !important;
+      --color-surface-lowest: #f1ebd9 !important;
+      --color-surface-low: #f6eedb !important;
+      --color-surface-mid: #f9f6f0 !important;
+      --color-surface-high: #ffffff !important;
+      --default-bg-color: ${LIGHT_BG} !important;
+      --input-bg-color: #f9f6f0 !important;
+      --popup-bg-color: #fdfbf7 !important;
+      --sidebar-bg-color: #f9f6f0 !important;
+      --overlay-bg-color: rgba(255, 255, 255, 0.75) !important;
+
+      --color-primary: #FACC15 !important;
+      --color-primary-darker: #EAB308 !important;
+      --color-primary-darkest: #CA8A04 !important;
+      --color-primary-hover: #EAB308 !important;
+      --color-primary-light: rgba(250, 204, 21, 0.15) !important;
+      --color-primary-light-darker: rgba(250, 204, 21, 0.25) !important;
+      --color-surface-primary-container: rgba(250, 204, 21, 0.12) !important;
+
+      --text-primary-color: #2d2a26 !important;
+      --color-on-surface: #2d2a26 !important;
+
+      --dialog-border-color: rgba(0, 0, 0, 0.06) !important;
+      --sidebar-border-color: rgba(0, 0, 0, 0.06) !important;
+      --shadow-island: 0 4px 24px rgba(227,223,211,0.6), 0 0 0 1px rgba(0,0,0,0.04) !important;
+
+      --button-bg: #fdfbf7 !important;
+      --button-hover-bg: #ffffff !important;
+      --button-active-bg: #FACC15 !important;
+      --button-color: #7a756b !important;
+      --button-hover-color: #2d2a26 !important;
+      --button-border: rgba(0,0,0,0.06) !important;
+      --button-hover-border: rgba(0,0,0,0.1) !important;
+      --button-active-border: #FACC15 !important;
+
+      --input-border-color: rgba(0,0,0,0.08) !important;
+      --input-hover-bg-color: #ffffff !important;
+      --input-label-color: #a8a399 !important;
+
+      --color-logo-icon: #FACC15 !important;
+    }
+
+    .tesserin-canvas-light .excalidraw .App-toolbar-content {
+      background: linear-gradient(145deg, #ffffff, #f9f6f0) !important;
+      border: 1px solid rgba(0,0,0,0.06) !important;
+      border-radius: 16px !important;
+      box-shadow: 0 4px 24px rgba(227,223,211,0.5), inset 0 1px 0 rgba(255,255,255,0.8) !important;
+    }
+
+    .tesserin-canvas-light .excalidraw .ToolIcon__icon {
+      border-radius: 10px !important;
+    }
+    .tesserin-canvas-light .excalidraw .ToolIcon__icon:hover {
+      background: rgba(250, 204, 21, 0.08) !important;
+    }
+    .tesserin-canvas-light .excalidraw .ToolIcon__icon[aria-checked="true"],
+    .tesserin-canvas-light .excalidraw .ToolIcon__icon[aria-selected="true"] {
+      background: #FACC15 !important;
+      color: #000000 !important;
+      box-shadow: 0 0 12px rgba(250,204,21,0.3), inset 0 1px 2px rgba(0,0,0,0.2) !important;
+    }
+    .tesserin-canvas-light .excalidraw .ToolIcon__icon[aria-checked="true"] svg,
+    .tesserin-canvas-light .excalidraw .ToolIcon__icon[aria-selected="true"] svg {
+      color: #000000 !important;
+    }
+
+    .tesserin-canvas-light .excalidraw .properties-content {
+      background: #fdfbf7 !important;
+    }
+
+    .tesserin-canvas-light .excalidraw .color-picker__button.active,
+    .tesserin-canvas-light .excalidraw .color-picker__button:focus {
+      box-shadow: 0 0 0 2px #FACC15 !important;
+    }
+
+    .tesserin-canvas-light .excalidraw .dropdown-menu-container {
+      background: #fdfbf7 !important;
+      border: 1px solid rgba(0,0,0,0.06) !important;
+      border-radius: 12px !important;
+      box-shadow: 0 8px 32px rgba(227,223,211,0.6) !important;
+    }
+
+    .tesserin-canvas-light .excalidraw .layer-ui__library {
+      background: #f9f6f0 !important;
+    }
+
+    .tesserin-canvas-light .excalidraw .layer-ui__wrapper__footer {
+      background: transparent !important;
+    }
+
+    .tesserin-canvas-light .excalidraw .welcome-screen-decor-hint {
+      color: #a8a399 !important;
+    }
+
+    .tesserin-canvas-light .excalidraw ::-webkit-scrollbar-thumb {
+      background-color: #d9d5cb !important;
+      border-radius: 10px !important;
+    }
+    .tesserin-canvas-light .excalidraw ::-webkit-scrollbar-track {
+      background: transparent !important;
+    }
+    
+    .tesserin-canvas-light .excalidraw {
+      --color-bg-canvas: ${LIGHT_BG} !important;
+      --color-surface-default: ${LIGHT_BG} !important;
+      --color-background: ${LIGHT_BG} !important;
+    }
   `
 
   /* ── render ───────────────────────────────────────────── */
   if (!isLoaded) {
     return (
-      <div className="w-full h-full flex items-center justify-center" style={{ background: DARK_BG }}>
+      <div className="w-full h-full flex items-center justify-center" style={{ background: isDark ? DARK_BG : LIGHT_BG }}>
         <TesserinLogo size={48} animated />
       </div>
     )
   }
 
   return (
-    <div className="w-full h-full relative">
+    <div className={`w-full h-full relative ${!isDark ? 'tesserin-canvas-light' : ''}`}>
       <style>{brandCSS}</style>
       <Excalidraw
         excalidrawAPI={onAPI}
         initialData={initialData || undefined}
         onChange={onChange}
+        onLibraryChange={onLibraryChange}
         UIOptions={{
           canvasActions: {
             changeViewBackgroundColor: true,

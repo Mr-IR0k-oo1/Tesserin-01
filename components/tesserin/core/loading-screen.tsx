@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import { TesserinLogo } from "./tesserin-logo"
+import { useTesserinTheme } from "./theme-provider"
 
 /**
  * LoadingScreen
@@ -21,6 +22,7 @@ const TAGLINES = [
 ]
 
 export function LoadingScreen() {
+  const { isDark } = useTesserinTheme()
   const [tagline] = useState(
     () => TAGLINES[Math.floor(Math.random() * TAGLINES.length)],
   )
@@ -34,8 +36,8 @@ export function LoadingScreen() {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden"
-      style={{ backgroundColor: "#050505" }}
+      className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden transition-colors duration-500"
+      style={{ backgroundColor: isDark ? "#050505" : "#FCFBF8" }}
       role="status"
       aria-label="Loading Tesserin"
     >
@@ -62,7 +64,7 @@ export function LoadingScreen() {
           style={{
             width: Math.random() * 3 + 1,
             height: Math.random() * 3 + 1,
-            backgroundColor: "rgba(250, 204, 21, 0.15)",
+            backgroundColor: isDark ? "rgba(250, 204, 21, 0.15)" : "rgba(234, 179, 8, 0.3)",
             left: `${10 + Math.random() * 80}%`,
             top: `${10 + Math.random() * 80}%`,
             animation: `loading-float ${4 + Math.random() * 4}s ease-in-out infinite`,
@@ -109,7 +111,7 @@ export function LoadingScreen() {
       >
         <p
           className="mt-2 text-sm font-light tracking-wide"
-          style={{ color: "rgba(255, 255, 255, 0.35)" }}
+          style={{ color: isDark ? "rgba(255, 255, 255, 0.35)" : "rgba(44, 42, 38, 0.6)" }}
         >
           {tagline}
         </p>
@@ -139,7 +141,7 @@ export function LoadingScreen() {
       <p
         className="mt-4 text-[10px] tracking-wider"
         style={{
-          color: "rgba(255, 255, 255, 0.12)",
+          color: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(44, 42, 38, 0.25)",
           opacity: phase >= 2 ? 1 : 0,
           transition: "opacity 0.5s ease 0.3s",
         }}

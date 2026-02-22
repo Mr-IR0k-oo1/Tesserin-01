@@ -37,6 +37,7 @@ import {
 import { getSetting, setSetting } from "@/lib/storage-client"
 import { useNotes } from "@/lib/notes-store"
 import { useMcp, type McpServerConfig } from "@/lib/mcp-client"
+import { useTesserinTheme } from "@/components/tesserin/core/theme-provider"
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                               */
@@ -129,14 +130,14 @@ const DEFAULTS: SettingsValues = {
 type SectionId = "general" | "editor" | "ai" | "mcp" | "appearance" | "vault" | "shortcuts" | "about"
 
 const SECTIONS: { id: SectionId; label: string; icon: React.ReactNode }[] = [
-  { id: "general",    label: "General",    icon: <FiSettings size={16} /> },
-  { id: "editor",     label: "Editor",     icon: <FiEdit3 size={16} /> },
-  { id: "ai",         label: "AI / SAM",   icon: <HiOutlineCpuChip size={16} /> },
-  { id: "mcp",        label: "MCP",        icon: <FiLink size={16} /> },
+  { id: "general", label: "General", icon: <FiSettings size={16} /> },
+  { id: "editor", label: "Editor", icon: <FiEdit3 size={16} /> },
+  { id: "ai", label: "AI / SAM", icon: <HiOutlineCpuChip size={16} /> },
+  { id: "mcp", label: "MCP", icon: <FiLink size={16} /> },
   { id: "appearance", label: "Appearance", icon: <FiSun size={16} /> },
-  { id: "vault",      label: "Vault & Data", icon: <FiDatabase size={16} /> },
-  { id: "shortcuts",  label: "Shortcuts",  icon: <FiCommand size={16} /> },
-  { id: "about",      label: "About",      icon: <FiInfo size={16} /> },
+  { id: "vault", label: "Vault & Data", icon: <FiDatabase size={16} /> },
+  { id: "shortcuts", label: "Shortcuts", icon: <FiCommand size={16} /> },
+  { id: "about", label: "About", icon: <FiInfo size={16} /> },
 ]
 
 /* ------------------------------------------------------------------ */
@@ -144,18 +145,18 @@ const SECTIONS: { id: SectionId; label: string; icon: React.ReactNode }[] = [
 /* ------------------------------------------------------------------ */
 
 const SHORTCUTS = [
-  { action: "Search notes",            keys: "Ctrl + K" },
-  { action: "Export note",             keys: "Ctrl + E" },
-  { action: "Template manager",        keys: "Ctrl + T" },
-  { action: "New note",                keys: "Ctrl + N" },
-  { action: "Bold",                    keys: "Ctrl + B" },
-  { action: "Italic",                  keys: "Ctrl + I" },
-  { action: "Save note",              keys: "Auto-saved" },
-  { action: "Toggle sidebar",         keys: "Ctrl + \\" },
-  { action: "Send SAM message",       keys: "Enter" },
-  { action: "New line in SAM",        keys: "Shift + Enter" },
-  { action: "Navigate graph",         keys: "Click + Drag" },
-  { action: "Zoom graph",             keys: "Scroll" },
+  { action: "Search notes", keys: "Ctrl + K" },
+  { action: "Export note", keys: "Ctrl + E" },
+  { action: "Template manager", keys: "Ctrl + T" },
+  { action: "New note", keys: "Ctrl + N" },
+  { action: "Bold", keys: "Ctrl + B" },
+  { action: "Italic", keys: "Ctrl + I" },
+  { action: "Save note", keys: "Auto-saved" },
+  { action: "Toggle sidebar", keys: "Ctrl + \\" },
+  { action: "Send SAM message", keys: "Enter" },
+  { action: "New line in SAM", keys: "Shift + Enter" },
+  { action: "Navigate graph", keys: "Click + Drag" },
+  { action: "Zoom graph", keys: "Scroll" },
 ]
 
 /* ------------------------------------------------------------------ */
@@ -323,6 +324,7 @@ function Kbd({ children }: { children: string }) {
 
 export function SettingsPanel() {
   const { notes } = useNotes()
+  const { setTheme } = useTesserinTheme()
   const [activeSection, setActiveSection] = useState<SectionId>("general")
   const [settings, setSettings] = useState<SettingsValues>({ ...DEFAULTS })
   const [dirty, setDirty] = useState(false)
@@ -357,7 +359,10 @@ export function SettingsPanel() {
     setSettings((prev) => ({ ...prev, [key]: value }))
     setDirty(true)
     setSaved(false)
-  }, [])
+    if (key === "appearance.theme") {
+      setTheme(value)
+    }
+  }, [setTheme])
 
   /* ---- Save all settings ---- */
   const saveSettings = useCallback(async () => {
@@ -678,9 +683,9 @@ export function SettingsPanel() {
           value={settings["ai.maxContextLength"]}
           onChange={(v) => update("ai.maxContextLength", v)}
           options={[
-            { value: "2048",  label: "2K tokens" },
-            { value: "4096",  label: "4K tokens" },
-            { value: "8192",  label: "8K tokens" },
+            { value: "2048", label: "2K tokens" },
+            { value: "4096", label: "4K tokens" },
+            { value: "8192", label: "8K tokens" },
             { value: "16384", label: "16K tokens" },
             { value: "32768", label: "32K tokens" },
           ]}
@@ -966,8 +971,8 @@ export function SettingsPanel() {
           value={settings["appearance.theme"]}
           onChange={(v) => update("appearance.theme", v)}
           options={[
-            { value: "dark",  label: "Obsidian Black" },
-            { value: "light", label: "Ceramic White" },
+            { value: "dark", label: "Obsidian Black" },
+            { value: "light", label: "Warm Ivory" },
           ]}
         />
       </SettingRow>
@@ -1078,7 +1083,7 @@ export function SettingsPanel() {
             onChange={(v) => update("vault.backupInterval", v)}
             options={[
               { value: "hourly", label: "Every hour" },
-              { value: "daily",  label: "Daily" },
+              { value: "daily", label: "Daily" },
               { value: "weekly", label: "Weekly" },
             ]}
           />
@@ -1221,8 +1226,8 @@ export function SettingsPanel() {
         </div>
         {[
           "React 19 · Vite 6 · TypeScript 5.7",
-          "Electron 33 · better-sqlite3",
-          "D3.js · Excalidraw · Radix UI",
+          "Electron 33 · better-safe-sqlite3",
+          "D3.js · Tesseradraw · Radix UI",
           "Tailwind CSS · Ollama",
         ].map((line) => (
           <div key={line} className="text-[10px]" style={{ color: "var(--text-secondary)" }}>{line}</div>
@@ -1240,14 +1245,14 @@ export function SettingsPanel() {
   /* ---- Section router ---- */
   const sectionContent = useMemo(() => {
     switch (activeSection) {
-      case "general":    return renderGeneral()
-      case "editor":     return renderEditor()
-      case "ai":         return renderAI()
-      case "mcp":        return renderMCP()
+      case "general": return renderGeneral()
+      case "editor": return renderEditor()
+      case "ai": return renderAI()
+      case "mcp": return renderMCP()
       case "appearance": return renderAppearance()
-      case "vault":      return renderVault()
-      case "shortcuts":  return renderShortcuts()
-      case "about":      return renderAbout()
+      case "vault": return renderVault()
+      case "shortcuts": return renderShortcuts()
+      case "about": return renderAbout()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSection, settings, aiStatus, aiModels, vaultStats, mcp.servers, mcp.statuses, mcp.tools, mcpNewServerName, mcpNewServerTransport, mcpNewServerUrl, mcpNewServerCommand, mcpNewServerArgs])
@@ -1279,9 +1284,8 @@ export function SettingsPanel() {
             <button
               key={section.id}
               onClick={() => setActiveSection(section.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150 ${
-                activeSection === section.id ? "" : "hover:brightness-110"
-              }`}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150 ${activeSection === section.id ? "" : "hover:brightness-110"
+                }`}
               style={{
                 background: activeSection === section.id ? "var(--accent-primary)" : "transparent",
                 color: activeSection === section.id ? "var(--text-on-accent)" : "var(--text-secondary)",

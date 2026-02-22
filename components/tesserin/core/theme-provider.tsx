@@ -1,8 +1,7 @@
 "use client"
 
-import React, { createContext, useContext, useCallback } from "react"
-
-/**
+import React, { createContext, useContext, useCallback, useState, useEffect } from "react"
+import { getSetting, setSetting } from "@/lib/storage-client"/**
  * TesserinThemeContext
  *
  * Provides a centralized, reactive theme toggle for the Tesserin
@@ -19,13 +18,16 @@ import React, { createContext, useContext, useCallback } from "react"
 interface ThemeContextValue {
   /** `true` when the Obsidian (dark) palette is active */
   isDark: boolean
-  /** Toggle between Ceramic White and Obsidian Black */
+  /** Toggle between Ceramic White (Warm Ivory) and Obsidian Black */
   toggleTheme: () => void
+  /** Explicitly set the theme string */
+  setTheme: (theme: string) => void
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
   isDark: true,
-  toggleTheme: () => {},
+  toggleTheme: () => { },
+  setTheme: () => { },
 })
 
 /** Hook to consume the Tesserin theme context */
@@ -65,29 +67,29 @@ const THEME_STYLES = `
   }
 
   .theme-light {
-    /* CERAMIC WHITE PALETTE */
-    --bg-app: #eef2f6;
-    --bg-panel: linear-gradient(145deg, #ffffff, #f0f0f0);
-    --bg-panel-inset: #e2e6ea;
+    /* WARM IVORY PALETTE */
+    --bg-app: #fdfbf7;
+    --bg-panel: linear-gradient(145deg, #ffffff, #f9f6f0);
+    --bg-panel-inset: #f1ebd9;
 
-    --text-primary: #1a1c20;
-    --text-secondary: #64748b;
-    --text-tertiary: #94a3b8;
+    --text-primary: #2d2a26;
+    --text-secondary: #7a756b;
+    --text-tertiary: #a8a399;
     --text-on-accent: #1a1c20;
 
     --accent-primary: #FACC15;
     --accent-pressed: #EAB308;
 
-    --border-light: #ffffff;
-    --border-dark: #d1d9e6;
+    --border-light: rgba(255, 255, 255, 0.8);
+    --border-dark: rgba(0, 0, 0, 0.06);
 
-    --panel-outer-shadow: 12px 12px 24px #cbd5e1, -12px -12px 24px #ffffff;
-    --btn-shadow: 6px 6px 12px #cbd5e1, -6px -6px 12px #ffffff;
-    --input-inner-shadow: inset 5px 5px 10px #cbd5e1, inset -5px -5px 10px #ffffff;
+    --panel-outer-shadow: 12px 12px 24px #e3dfd3, -12px -12px 24px #ffffff;
+    --btn-shadow: 6px 6px 12px #e3dfd3, -6px -6px 12px #ffffff;
+    --input-inner-shadow: inset 5px 5px 10px #e3dfd3, inset -5px -5px 10px #ffffff;
 
-    --graph-node: #cbd5e1;
-    --graph-link: #e2e8f0;
-    --code-bg: #f8fafc;
+    --graph-node: #e6e2d8;
+    --graph-link: #d9d5cb;
+    --code-bg: #f9f8f4;
   }
 
   /* ------------------------------------------------------------------ */
@@ -219,13 +221,42 @@ interface ThemeProviderProps {
 export function TesserinThemeProvider({
   children,
 }: ThemeProviderProps) {
-  // Tesserin is strictly dark mode (Obsidian Black)
-  const isDark = true
-  const toggleTheme = useCallback(() => {}, [])
+  const [theme, setThemeState] = useState(() => {
+    // Attempt synchronous hydration from browser localStorage to prevent flash
+    try {
+      if (typeof window !== "undefined") {
+        const stored = window.localStorage.getItem("tesserin:settings")
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (parsed["appearance.theme"]) return parsed["appearance.theme"]
+        }
+      }
+    } catch { }
+    return "dark"
+  })
+
+  useEffect(() => {
+    getSetting("appearance.theme").then((val) => {
+      if (val) setThemeState(val)
+    })
+  }, [])
+
+  const isDark = theme === "dark"
+
+  const toggleTheme = useCallback(() => {
+    const newTheme = theme === "dark" ? "light" : "dark"
+    setThemeState(newTheme)
+    setSetting("appearance.theme", newTheme).catch()
+  }, [theme])
+
+  const setTheme = useCallback((newTheme: string) => {
+    setThemeState(newTheme)
+    setSetting("appearance.theme", newTheme).catch()
+  }, [])
 
   return (
-    <ThemeContext.Provider value={{ isDark, toggleTheme }}>
-      <div className="theme-dark">
+    <ThemeContext.Provider value={{ isDark, toggleTheme, setTheme }}>
+      <div className={theme === "dark" ? "theme-dark" : "theme-light"}>
         {/* Inject custom properties into the document */}
         <style dangerouslySetInnerHTML={{ __html: THEME_STYLES }} />
         {children}
