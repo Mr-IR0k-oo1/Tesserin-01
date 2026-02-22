@@ -22,6 +22,7 @@ const DEFAULT_CANVAS_ID = "default-canvas"
 
 /** Fields from appState worth persisting (skip transient UI fields) */
 const PERSIST_APP_STATE_KEYS = [
+  "theme",
   "viewBackgroundColor",
   "currentItemStrokeColor",
   "currentItemBackgroundColor",
@@ -62,7 +63,7 @@ export function CreativeCanvas() {
           try {
             const lsRaw = localStorage.getItem(`tesserin:canvas:${DEFAULT_CANVAS_ID}`)
             if (lsRaw) canvas = JSON.parse(lsRaw)
-          } catch {}
+          } catch { }
         }
 
         if (!canvas) {
@@ -87,8 +88,7 @@ export function CreativeCanvas() {
               elements,
               appState: {
                 ...appState,
-                theme: "dark",
-                viewBackgroundColor: appState.viewBackgroundColor || DARK_BG,
+                theme: appState.theme || "dark",
               },
               files: files && Object.keys(files).length > 0 ? files : undefined,
             }
@@ -101,6 +101,11 @@ export function CreativeCanvas() {
       if (!cancelled) {
         if (canvasData) {
           setInitialData(canvasData)
+        } else {
+          setInitialData({
+            elements: [],
+            appState: { theme: "dark" },
+          })
         }
         setIsLoaded(true)
         // Allow saving after initial scene-load onChange calls settle
@@ -148,14 +153,14 @@ export function CreativeCanvas() {
         canvas.app_state = appStateJson
         canvas.updated_at = new Date().toISOString()
         localStorage.setItem(lsKey, JSON.stringify(canvas))
-      } catch {}
+      } catch { }
 
       // Also fire async IPC save (may or may not complete before unload)
       storage.updateCanvas(canvasId, {
         elements: elementsJson,
         appState: appStateJson,
-      }).catch(() => {})
-    } catch {}
+      }).catch(() => { })
+    } catch { }
   }, [])
 
   // ── Debounced save ────────────────────────────────────────────
@@ -189,7 +194,7 @@ export function CreativeCanvas() {
             canvas.app_state = appStateJson
             canvas.updated_at = new Date().toISOString()
             localStorage.setItem(lsKey, JSON.stringify(canvas))
-          } catch {}
+          } catch { }
 
           // Also save via IPC/storage API
           storage
@@ -240,11 +245,6 @@ export function CreativeCanvas() {
 
   const onAPI = useCallback((api: any) => {
     apiRef.current = api
-    try {
-      api.updateScene({
-        appState: { viewBackgroundColor: DARK_BG },
-      })
-    } catch {}
   }, [])
 
   // Excalidraw onChange receives (elements, appState, files)
@@ -377,6 +377,13 @@ export function CreativeCanvas() {
     .excalidraw.theme--dark ::-webkit-scrollbar-track {
       background: transparent !important;
     }
+    
+    /* ── Canvas Background Force ── */
+    .excalidraw.theme--dark {
+      --color-bg-canvas: ${DARK_BG} !important;
+      --color-surface-default: ${DARK_BG} !important;
+      --color-background: ${DARK_BG} !important;
+    }
   `
 
   /* ── render ───────────────────────────────────────────── */
@@ -393,7 +400,6 @@ export function CreativeCanvas() {
       <style>{brandCSS}</style>
       <Excalidraw
         excalidrawAPI={onAPI}
-        theme="dark"
         initialData={initialData || undefined}
         onChange={onChange}
         UIOptions={{
@@ -403,7 +409,7 @@ export function CreativeCanvas() {
             export: { saveFileToDisk: true },
             loadScene: true,
             saveToActiveFile: false,
-            toggleTheme: false,
+            toggleTheme: true,
           },
         }}
       >
