@@ -299,7 +299,7 @@ export function ReferenceManager({ isOpen, onClose, onInsertCitation }: Referenc
                       setCitationStyle(s)
                       setShowStyleMenu(false)
                     }}
-                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-white/5 transition-colors"
+                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-white/10 transition-colors"
                     style={{
                       color: s === citationStyle ? "var(--accent-primary)" : "var(--text-secondary)",
                     }}
@@ -481,7 +481,7 @@ export function ReferenceManager({ isOpen, onClose, onInsertCitation }: Referenc
                             setSelectedEntry(entry)
                             setViewMode("detail")
                           }}
-                          className="w-full text-left px-3 py-2.5 border-b transition-colors hover:bg-white/5"
+                          className="w-full text-left px-3 py-2.5 border-b transition-colors hover:bg-white/10"
                           style={{
                             borderColor: "var(--border-dark)",
                             backgroundColor: isSelected ? "var(--bg-panel-inset)" : "transparent",
@@ -573,7 +573,7 @@ export function ReferenceManager({ isOpen, onClose, onInsertCitation }: Referenc
             <div className="flex-1 flex flex-col overflow-hidden">
               <button
                 onClick={() => setViewMode("library")}
-                className="px-4 py-2 text-xs flex items-center gap-1 hover:bg-white/5 transition-colors"
+                className="px-4 py-2 text-xs flex items-center gap-1 hover:bg-white/10 transition-colors"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 ← Back to library

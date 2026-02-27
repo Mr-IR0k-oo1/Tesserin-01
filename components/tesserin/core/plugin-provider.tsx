@@ -1,19 +1,22 @@
 "use client"
 
-import React, { useEffect, useRef, useCallback, useState } from "react"
+import React, { useEffect, useRef, useCallback, useState, useContext, createContext } from "react"
 import {
   FiZap, FiStar, FiCpu, FiCommand, FiChevronRight
 } from "react-icons/fi"
 import {
   pluginRegistry,
   usePlugins,
+  sandboxAPI,
   type TesserinPluginAPI,
   type TesserinPlugin,
   type PluginEventType,
 } from "@/lib/plugin-system"
 import { useNotes } from "@/lib/notes-store"
-import { getSetting, setSetting } from "@/lib/storage-client"
+
 import { BUILT_IN_PLUGINS } from "@/lib/builtin-plugins"
+import { WORKSPACE_PLUGINS } from "@/lib/workspace-plugins"
+import { COMMUNITY_PLUGINS } from "@/lib/community-plugins"
 import { mcpStore } from "@/lib/mcp-client"
 import {
   getRandomTip,
@@ -21,6 +24,21 @@ import {
   formatShortcut,
   type TesserinTip,
 } from "@/lib/tips"
+
+/**
+ * Context that exposes the plugin API factory to child components.
+ * This allows the community store and settings panel to activate plugins
+ * with the same fully-wired API (toast notifications, navigation, vault access).
+ */
+type PluginAPIFactory = (pluginId: string) => TesserinPluginAPI
+const PluginAPIContext = createContext<PluginAPIFactory | null>(null)
+
+/** Hook to get the shared plugin API factory from the provider. */
+export function usePluginAPI(): PluginAPIFactory {
+  const factory = useContext(PluginAPIContext)
+  if (!factory) throw new Error("usePluginAPI must be used within <PluginProvider>")
+  return factory
+}
 
 /**
  * PluginProvider
@@ -43,9 +61,10 @@ export function PluginProvider({ children, onNotice, onNavigateTab }: PluginProv
   const { notes, selectedNoteId, selectNote, addNote, updateNote, deleteNote, searchNotes } = useNotes()
   const initialised = useRef(false)
 
-  // Create the API factory for plugins
+  // Create the API factory for plugins (sandboxed with rate-limiting + permissions)
   const createAPI = useCallback(
-    (pluginId: string): TesserinPluginAPI => ({
+    (pluginId: string): TesserinPluginAPI => {
+      const rawApi: TesserinPluginAPI = {
       registerCommand: (cmd) => pluginRegistry.addCommand(pluginId, cmd),
       registerPanel: (panel) => pluginRegistry.addPanel(pluginId, panel),
       registerStatusBarWidget: (widget) => pluginRegistry.addStatusBarWidget(pluginId, widget),
@@ -88,17 +107,23 @@ export function PluginProvider({ children, onNotice, onNavigateTab }: PluginProv
 
       settings: {
         get: (key) => {
-          // Synchronous access via localStorage for plugins
+          // Plugin settings use a dedicated localStorage key for reliable synchronous access.
+          // This works in both Electron and browser (Vite dev) modes.
           try {
-            const raw = localStorage.getItem("tesserin:settings")
-            const settings = raw ? JSON.parse(raw) : {}
-            return settings[key] ?? null
+            const raw = localStorage.getItem("tesserin:plugin-data")
+            const data = raw ? JSON.parse(raw) : {}
+            return data[key] ?? null
           } catch {
             return null
           }
         },
         set: (key, value) => {
-          setSetting(key, value).catch(() => {})
+          try {
+            const raw = localStorage.getItem("tesserin:plugin-data")
+            const data = raw ? JSON.parse(raw) : {}
+            data[key] = value
+            localStorage.setItem("tesserin:plugin-data", JSON.stringify(data))
+          } catch {}
         },
       },
 
@@ -114,7 +139,13 @@ export function PluginProvider({ children, onNotice, onNavigateTab }: PluginProv
           onNavigateTab?.(tabId)
         },
       },
-    }),
+    }
+
+      // Look up the plugin manifest for permission checking
+      const entry = pluginRegistry.snapshotPlugins.find(p => p.id === pluginId)
+      const manifest = entry?.manifest ?? { id: pluginId, name: pluginId, version: "0.0.0", description: "", author: "" }
+      return sandboxAPI(pluginId, rawApi, manifest)
+    },
     [notes, selectedNoteId, selectNote, addNote, updateNote, deleteNote, onNotice, onNavigateTab],
   )
 
@@ -124,9 +155,30 @@ export function PluginProvider({ children, onNotice, onNavigateTab }: PluginProv
     initialised.current = true
 
     async function init() {
+      // Activate core plugins (always on)
       for (const plugin of BUILT_IN_PLUGINS) {
         pluginRegistry.register(plugin)
         await pluginRegistry.activate(plugin.manifest.id, createAPI)
+      }
+
+      // Register workspace plugins — activate only if user has enabled them
+      for (const plugin of WORKSPACE_PLUGINS) {
+        pluginRegistry.register(plugin)
+        const key = `tesserin:plugin:${plugin.manifest.id}`
+        const enabled = localStorage.getItem(key)
+        if (enabled === "true") {
+          await pluginRegistry.activate(plugin.manifest.id, createAPI)
+        }
+      }
+
+      // Register community plugins — activate only if user has installed them
+      for (const plugin of COMMUNITY_PLUGINS) {
+        pluginRegistry.register(plugin)
+        const key = `tesserin:plugin:${plugin.manifest.id}`
+        const enabled = localStorage.getItem(key)
+        if (enabled === "true") {
+          await pluginRegistry.activate(plugin.manifest.id, createAPI)
+        }
       }
 
       // Emit app:ready
@@ -204,7 +256,7 @@ export function PluginProvider({ children, onNotice, onNavigateTab }: PluginProv
     return () => unsubscribe()
   }, [])
 
-  return <>{children}</>
+  return <PluginAPIContext.Provider value={createAPI}>{children}</PluginAPIContext.Provider>
 }
 
 /* ================================================================== */
@@ -227,7 +279,7 @@ interface StatusBarProps {
   onTipAction?: (action: string) => void
 }
 
-export function StatusBar({ activeTab, onTipAction }: StatusBarProps = {}) {
+export function StatusBar({ activeTab, onTipAction }: StatusBarProps) {
   const { statusBarWidgets } = usePlugins()
   const [currentTip, setCurrentTip] = useState<TesserinTip | null>(null)
   const [tipFading, setTipFading] = useState(false)

@@ -8,6 +8,15 @@ const path_1 = __importDefault(require("path"));
 const ipc_handlers_1 = require("./ipc-handlers");
 const database_1 = require("./database");
 const mcp_server_1 = require("./mcp-server");
+const api_server_1 = require("./api-server");
+// ── Global error handlers ───────────────────────────────────────
+// Prevent the main process from crashing silently on unhandled errors.
+process.on('uncaughtException', (error) => {
+    console.error('[Tesserin] Uncaught exception in main process:', error);
+});
+process.on('unhandledRejection', (reason) => {
+    console.error('[Tesserin] Unhandled promise rejection in main process:', reason);
+});
 // Determine if we're in development mode
 const isDev = process.env.NODE_ENV === 'development' || !electron_1.app.isPackaged;
 // Resolve icon path — in dev it's at project root, in production it's in resources/
@@ -96,8 +105,61 @@ electron_1.app.whenReady().then(() => {
     catch (err) {
         console.error('[Tesserin] Failed to register IPC handlers:', err);
     }
+    // Auto-start API server if it was previously enabled
+    try {
+        const apiEnabled = (0, database_1.getSetting)('api.serverEnabled');
+        if (apiEnabled === 'true') {
+            const apiPort = parseInt((0, database_1.getSetting)('api.serverPort') || '9960') || 9960;
+            (0, api_server_1.startApiServer)(apiPort).then((port) => {
+                console.log(`[Tesserin] API server auto-started on port ${port}`);
+            }).catch((err) => {
+                console.error('[Tesserin] Failed to auto-start API server:', err);
+            });
+        }
+    }
+    catch {
+        // Non-fatal — API server is optional
+    }
     // Create the main window
     createWindow();
+    // ── Content Security Policy ──────────────────────────────────────
+    // Read the Ollama endpoint from settings so the CSP allows the configured host
+    let ollamaOrigin = 'http://127.0.0.1:11434';
+    try {
+        const configured = (0, database_1.getSetting)('ai.endpoint');
+        if (configured) {
+            const url = new URL(configured);
+            ollamaOrigin = url.origin;
+        }
+    }
+    catch { /* keep default */ }
+    const csp = isDev
+        ? [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline'", // Vite HMR needs inline scripts
+            "style-src 'self' 'unsafe-inline'", // Tailwind + inline styles
+            "connect-src 'self' ws://localhost:* http://localhost:*", // Vite WS + Ollama
+            "img-src 'self' data: blob:",
+            "font-src 'self' data:",
+            "worker-src 'self' blob:",
+        ].join('; ')
+        : [
+            "default-src 'self'",
+            "script-src 'self'",
+            "style-src 'self' 'unsafe-inline'", // Tailwind runtime styles
+            `connect-src 'self' ${ollamaOrigin}`, // Ollama (from settings)
+            "img-src 'self' data: blob:",
+            "font-src 'self' data:",
+            "worker-src 'self' blob:",
+        ].join('; ');
+    electron_1.session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+        callback({
+            responseHeaders: {
+                ...details.responseHeaders,
+                'Content-Security-Policy': [csp],
+            },
+        });
+    });
     console.log('[Tesserin] Window created, loading', isDev ? 'http://localhost:5173' : 'dist/index.html');
     electron_1.app.on('activate', () => {
         if (electron_1.BrowserWindow.getAllWindows().length === 0)

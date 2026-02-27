@@ -112,6 +112,56 @@ const tesserinAPI = {
         getTools: () => electron_1.ipcRenderer.invoke('mcp:getTools'),
         getServerTools: (serverId) => electron_1.ipcRenderer.invoke('mcp:getServerTools', serverId),
     },
+    // ── Terminal (node-pty) ───────────────────────────────────────────
+    terminal: {
+        spawn: (cwd) => electron_1.ipcRenderer.invoke('terminal:spawn', cwd),
+        write: (id, data) => electron_1.ipcRenderer.send('terminal:write', id, data),
+        resize: (id, cols, rows) => electron_1.ipcRenderer.send('terminal:resize', id, cols, rows),
+        kill: (id) => electron_1.ipcRenderer.send('terminal:kill', id),
+        onData: (id, callback) => {
+            const channel = `terminal:data:${id}`;
+            const listener = (_e, data) => callback(data);
+            electron_1.ipcRenderer.on(channel, listener);
+            return () => { electron_1.ipcRenderer.removeListener(channel, listener); };
+        },
+        onExit: (id, callback) => {
+            const channel = `terminal:exit:${id}`;
+            const listener = (_e, code) => callback(code);
+            electron_1.ipcRenderer.on(channel, listener);
+            return () => { electron_1.ipcRenderer.removeListener(channel, listener); };
+        },
+    },
+    // ── Filesystem ────────────────────────────────────────────────────
+    fs: {
+        readDir: (dirPath) => electron_1.ipcRenderer.invoke('fs:readDir', dirPath),
+        readFile: (filePath) => electron_1.ipcRenderer.invoke('fs:readFile', filePath),
+        writeFile: (filePath, content) => electron_1.ipcRenderer.invoke('fs:writeFile', filePath, content),
+        stat: (filePath) => electron_1.ipcRenderer.invoke('fs:stat', filePath),
+        mkdir: (dirPath) => electron_1.ipcRenderer.invoke('fs:mkdir', dirPath),
+        delete: (filePath) => electron_1.ipcRenderer.invoke('fs:delete', filePath),
+    },
+    // ── Shell Exec (non-interactive) ──────────────────────────────────
+    shell: {
+        exec: (command, cwd) => electron_1.ipcRenderer.invoke('shell:exec', command, cwd),
+    },
+    // ── Dialog ────────────────────────────────────────────────────────
+    dialog: {
+        openFolder: () => electron_1.ipcRenderer.invoke('dialog:openFolder'),
+    },
+    // ── API Keys & Server ─────────────────────────────────────────────
+    api: {
+        keys: {
+            list: () => electron_1.ipcRenderer.invoke('api:keys:list'),
+            create: (data) => electron_1.ipcRenderer.invoke('api:keys:create', data),
+            revoke: (id) => electron_1.ipcRenderer.invoke('api:keys:revoke', id),
+            delete: (id) => electron_1.ipcRenderer.invoke('api:keys:delete', id),
+        },
+        server: {
+            start: (port) => electron_1.ipcRenderer.invoke('api:server:start', port),
+            stop: () => electron_1.ipcRenderer.invoke('api:server:stop'),
+            status: () => electron_1.ipcRenderer.invoke('api:server:status'),
+        },
+    },
 };
 electron_1.contextBridge.exposeInMainWorld('tesserin', tesserinAPI);
 //# sourceMappingURL=preload.js.map

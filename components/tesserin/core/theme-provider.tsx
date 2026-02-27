@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useCallback, useState, useEffect } from "react"
+import React, { createContext, useContext, useCallback, useState, useEffect, useRef } from "react"
 import { getSetting, setSetting } from "@/lib/storage-client"/**
  * TesserinThemeContext
  *
@@ -48,7 +48,7 @@ const THEME_STYLES = `
 
     --text-primary: #ededed;
     --text-secondary: #888888;
-    --text-tertiary: #444444;
+    --text-tertiary: #666666;
     --text-on-accent: #000000;
 
     --accent-primary: #FACC15;
@@ -64,32 +64,40 @@ const THEME_STYLES = `
     --graph-node: #333333;
     --graph-link: #333333;
     --code-bg: #000000;
+
+    --tooltip-bg: #1a1a1a;
+    --tooltip-text: #ededed;
+    --tooltip-border: rgba(255, 255, 255, 0.08);
   }
 
   .theme-light {
-    /* WARM IVORY PALETTE */
-    --bg-app: #fdfbf7;
-    --bg-panel: linear-gradient(145deg, #ffffff, #f9f6f0);
-    --bg-panel-inset: #f1ebd9;
+    /* WARM IVORY PALETTE — soft parchment feel */
+    --bg-app: #f8f6f1;
+    --bg-panel: linear-gradient(145deg, #faf8f4, #f3f0e8);
+    --bg-panel-inset: #eee9dc;
 
-    --text-primary: #2d2a26;
-    --text-secondary: #7a756b;
-    --text-tertiary: #a8a399;
-    --text-on-accent: #1a1c20;
+    --text-primary: #33302b;
+    --text-secondary: #6e6960;
+    --text-tertiary: #9e9889;
+    --text-on-accent: #2c2517;
 
-    --accent-primary: #FACC15;
-    --accent-pressed: #EAB308;
+    --accent-primary: #d4a829;
+    --accent-pressed: #c49b22;
 
-    --border-light: rgba(255, 255, 255, 0.8);
-    --border-dark: rgba(0, 0, 0, 0.06);
+    --border-light: rgba(255, 255, 255, 0.65);
+    --border-dark: rgba(120, 100, 70, 0.08);
 
-    --panel-outer-shadow: 12px 12px 24px #e3dfd3, -12px -12px 24px #ffffff;
-    --btn-shadow: 6px 6px 12px #e3dfd3, -6px -6px 12px #ffffff;
-    --input-inner-shadow: inset 5px 5px 10px #e3dfd3, inset -5px -5px 10px #ffffff;
+    --panel-outer-shadow: 6px 6px 16px rgba(195, 187, 170, 0.35), -4px -4px 12px rgba(255, 255, 255, 0.7);
+    --btn-shadow: 3px 3px 8px rgba(195, 187, 170, 0.3), -3px -3px 8px rgba(255, 255, 255, 0.65);
+    --input-inner-shadow: inset 2px 2px 6px rgba(195, 187, 170, 0.3), inset -2px -2px 6px rgba(255, 255, 255, 0.65);
 
-    --graph-node: #e6e2d8;
-    --graph-link: #d9d5cb;
-    --code-bg: #f9f8f4;
+    --graph-node: #ddd8cc;
+    --graph-link: #ccc7bb;
+    --code-bg: #f5f3ed;
+
+    --tooltip-bg: #3d3a35;
+    --tooltip-text: #f5f3ed;
+    --tooltip-border: rgba(255, 255, 255, 0.1);
   }
 
   /* ------------------------------------------------------------------ */
@@ -256,11 +264,26 @@ export function TesserinThemeProvider({
 
   return (
     <ThemeContext.Provider value={{ isDark, toggleTheme, setTheme }}>
+      <ThemeStyles />
       <div className={theme === "dark" ? "theme-dark" : "theme-light"}>
-        {/* Inject custom properties into the document */}
-        <style dangerouslySetInnerHTML={{ __html: THEME_STYLES }} />
         {children}
       </div>
     </ThemeContext.Provider>
   )
+}
+
+/** Injects theme CSS once into <head> and never re-renders */
+function ThemeStyles() {
+  const injected = useRef(false)
+  useEffect(() => {
+    if (injected.current) return
+    injected.current = true
+    if (!document.getElementById('tesserin-theme-styles')) {
+      const style = document.createElement('style')
+      style.id = 'tesserin-theme-styles'
+      style.textContent = THEME_STYLES
+      document.head.appendChild(style)
+    }
+  }, [])
+  return null
 }

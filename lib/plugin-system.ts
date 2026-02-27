@@ -40,7 +40,24 @@ export interface PluginManifest {
   url?: string
   /** Icon React node (optional) */
   icon?: React.ReactNode
+  /**
+   * Permissions the plugin requests.
+   * Built-in plugins automatically get all permissions.
+   * Third-party plugins must declare what they need.
+   */
+  permissions?: PluginPermission[]
 }
+
+export type PluginPermission =
+  | "vault:read"       // list, get, search notes
+  | "vault:write"      // create, update, delete notes
+  | "settings:read"
+  | "settings:write"
+  | "ui:notify"        // show notices / navigate tabs
+  | "commands"         // register commands
+  | "panels"           // register panels
+  | "sam:tools"        // register SAM tools
+  | "events"           // subscribe to events
 
 /** Events plugins can subscribe to */
 export type PluginEventType =
@@ -192,6 +209,93 @@ export interface TesserinPlugin {
 }
 
 /* ================================================================== */
+/*  Plugin sandbox helpers                                             */
+/* ================================================================== */
+
+/** All permissions — granted to built-in plugins automatically. */
+const ALL_PERMISSIONS: PluginPermission[] = [
+  "vault:read", "vault:write", "settings:read", "settings:write",
+  "ui:notify", "commands", "panels", "sam:tools", "events",
+]
+
+/** Simple per-plugin rate limiter: max `limit` calls per `windowMs`. */
+class RateLimiter {
+  private counts = new Map<string, { count: number; resetAt: number }>()
+  private limit: number
+  private windowMs: number
+
+  constructor(limit = 120, windowMs = 60_000) {
+    this.limit = limit
+    this.windowMs = windowMs
+  }
+
+  check(pluginId: string): boolean {
+    const now = Date.now()
+    const entry = this.counts.get(pluginId)
+    if (!entry || now >= entry.resetAt) {
+      this.counts.set(pluginId, { count: 1, resetAt: now + this.windowMs })
+      return true
+    }
+    if (entry.count >= this.limit) return false
+    entry.count++
+    return true
+  }
+}
+
+const apiRateLimiter = new RateLimiter(120, 60_000)   // 120 calls / minute
+const writeRateLimiter = new RateLimiter(30, 60_000)  // 30 mutations / minute
+
+/** Wrap a function with rate-limit + permission check. */
+function guarded<T extends (...args: any[]) => any>(
+  pluginId: string,
+  permission: PluginPermission,
+  permissions: Set<PluginPermission>,
+  fn: T,
+  isWrite = false,
+): T {
+  return ((...args: any[]) => {
+    if (!permissions.has(permission)) {
+      throw new Error(`Plugin "${pluginId}" lacks permission "${permission}"`)
+    }
+    if (!apiRateLimiter.check(pluginId)) {
+      throw new Error(`Plugin "${pluginId}" exceeded rate limit`)
+    }
+    if (isWrite && !writeRateLimiter.check(pluginId)) {
+      throw new Error(`Plugin "${pluginId}" exceeded write rate limit`)
+    }
+    return fn(...args)
+  }) as unknown as T
+}
+
+/** Permission-only guard (no rate limit) for cheap read accessors. */
+function guardedRead<T extends (...args: any[]) => any>(
+  pluginId: string,
+  permission: PluginPermission,
+  permissions: Set<PluginPermission>,
+  fn: T,
+): T {
+  return ((...args: any[]) => {
+    if (!permissions.has(permission)) {
+      throw new Error(`Plugin "${pluginId}" lacks permission "${permission}"`)
+    }
+    return fn(...args)
+  }) as unknown as T
+}
+
+/** Activation timeout (10 seconds). */
+const ACTIVATE_TIMEOUT_MS = 10_000
+
+function withTimeout<T>(promise: Promise<T> | void, ms: number, label: string): Promise<T | void> {
+  if (!promise) return Promise.resolve()
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Plugin "${label}" activation timed out after ${ms}ms`)), ms),
+    ),
+  ])
+}
+
+/* ================================================================== */
 /*  Plugin Registry (runtime store)                                    */
 /* ================================================================== */
 
@@ -268,7 +372,22 @@ class PluginRegistry {
     if (!entry || entry.enabled) return
 
     const api = apiFactory(pluginId)
-    await entry.plugin.activate(api)
+    // Freeze the API so plugins can't tamper with it
+    Object.freeze(api)
+    Object.freeze(api.vault)
+    Object.freeze(api.settings)
+    Object.freeze(api.ui)
+
+    try {
+      await withTimeout(
+        entry.plugin.activate(api),
+        ACTIVATE_TIMEOUT_MS,
+        pluginId,
+      )
+    } catch (err) {
+      console.error(`[Plugin] Failed to activate "${pluginId}":`, err)
+      return
+    }
     entry.enabled = true
     this.notify()
   }
@@ -415,6 +534,46 @@ class PluginRegistry {
 
 /* ── Singleton ── */
 export const pluginRegistry = new PluginRegistry()
+
+/** Create a permission-checked, rate-limited wrapper around a raw API. */
+export function sandboxAPI(
+  pluginId: string,
+  rawApi: TesserinPluginAPI,
+  manifest: PluginManifest,
+): TesserinPluginAPI {
+  // Built-in plugins (com.tesserin.*) get all permissions
+  const isBuiltIn = pluginId.startsWith("com.tesserin.")
+  const perms = new Set<PluginPermission>(isBuiltIn ? ALL_PERMISSIONS : (manifest.permissions ?? ["vault:read", "ui:notify", "commands", "events"]))
+
+  return {
+    registerCommand: guarded(pluginId, "commands", perms, rawApi.registerCommand),
+    registerPanel: guarded(pluginId, "panels", perms, rawApi.registerPanel),
+    registerStatusBarWidget: guarded(pluginId, "panels", perms, rawApi.registerStatusBarWidget),
+    registerMarkdownProcessor: guarded(pluginId, "panels", perms, rawApi.registerMarkdownProcessor),
+    registerCodeBlockRenderer: guarded(pluginId, "panels", perms, rawApi.registerCodeBlockRenderer),
+    registerSAMTool: guarded(pluginId, "sam:tools", perms, rawApi.registerSAMTool),
+    on: guarded(pluginId, "events", perms, rawApi.on),
+    off: guarded(pluginId, "events", perms, rawApi.off),
+    vault: {
+      list: guarded(pluginId, "vault:read", perms, rawApi.vault.list),
+      get: guarded(pluginId, "vault:read", perms, rawApi.vault.get),
+      getSelected: guardedRead(pluginId, "vault:read", perms, rawApi.vault.getSelected),
+      search: guarded(pluginId, "vault:read", perms, rawApi.vault.search),
+      create: guarded(pluginId, "vault:write", perms, rawApi.vault.create, true),
+      update: guarded(pluginId, "vault:write", perms, rawApi.vault.update, true),
+      delete: guarded(pluginId, "vault:write", perms, rawApi.vault.delete, true),
+      selectNote: guarded(pluginId, "vault:read", perms, rawApi.vault.selectNote),
+    },
+    settings: {
+      get: guarded(pluginId, "settings:read", perms, rawApi.settings.get),
+      set: guarded(pluginId, "settings:write", perms, rawApi.settings.set, true),
+    },
+    ui: {
+      showNotice: guarded(pluginId, "ui:notify", perms, rawApi.ui.showNotice),
+      navigateToTab: guarded(pluginId, "ui:notify", perms, rawApi.ui.navigateToTab),
+    },
+  }
+}
 
 /* ================================================================== */
 /*  React hook                                                         */

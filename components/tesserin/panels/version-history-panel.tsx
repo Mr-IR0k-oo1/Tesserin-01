@@ -250,7 +250,7 @@ export function VersionHistoryPanel() {
                       setSelectedVersion(isSelected ? null : version.id)
                       setShowDiff(false)
                     }}
-                    className="w-full text-left px-4 py-3 transition-colors hover:bg-white/5"
+                    className="w-full text-left px-4 py-3 transition-colors hover:bg-white/10"
                     style={{
                       backgroundColor: isSelected ? "var(--bg-panel-inset)" : "transparent",
                     }}

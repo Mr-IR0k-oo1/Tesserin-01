@@ -29,6 +29,14 @@ import {
   FiLink,
   FiPlay,
   FiPause,
+  FiPackage,
+  FiKey,
+  FiCopy,
+  FiShield,
+  FiServer,
+  FiCompass,
+  FiCode,
+  FiClock,
 } from "react-icons/fi"
 import {
   HiOutlineCpuChip,
@@ -38,6 +46,9 @@ import { getSetting, setSetting } from "@/lib/storage-client"
 import { useNotes } from "@/lib/notes-store"
 import { useMcp, type McpServerConfig } from "@/lib/mcp-client"
 import { useTesserinTheme } from "@/components/tesserin/core/theme-provider"
+import { usePlugins, pluginRegistry } from "@/lib/plugin-system"
+import { usePluginAPI } from "@/components/tesserin/core/plugin-provider"
+import { CommunityPluginsPanel } from "@/components/tesserin/panels/community-plugins-panel"
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                               */
@@ -83,6 +94,20 @@ interface SettingsValues {
   "vault.backupEnabled": string
   "vault.backupInterval": string
   "vault.defaultNoteTemplate": string
+
+  // Features — toggle workspace tabs & panels on/off
+  "features.canvas": string
+  "features.graph": string
+  "features.codeView": string
+  "features.sam": string
+  "features.floatingChat": string
+  "features.statusBar": string
+  "features.backlinks": string
+  "features.versionHistory": string
+  "features.references": string
+  "features.splitPanes": string
+  "features.dailyNotes": string
+  "features.templates": string
 }
 
 type SettingKey = keyof SettingsValues
@@ -121,21 +146,38 @@ const DEFAULTS: SettingsValues = {
   "vault.backupEnabled": "false",
   "vault.backupInterval": "daily",
   "vault.defaultNoteTemplate": "none",
+
+  "features.canvas": "true",
+  "features.graph": "true",
+  "features.codeView": "true",
+  "features.sam": "true",
+  "features.floatingChat": "true",
+  "features.statusBar": "true",
+  "features.backlinks": "true",
+  "features.versionHistory": "true",
+  "features.references": "true",
+  "features.splitPanes": "true",
+  "features.dailyNotes": "true",
+  "features.templates": "true",
 }
 
 /* ------------------------------------------------------------------ */
 /*  Section definitions                                                */
 /* ------------------------------------------------------------------ */
 
-type SectionId = "general" | "editor" | "ai" | "mcp" | "appearance" | "vault" | "shortcuts" | "about"
+type SectionId = "general" | "editor" | "ai" | "mcp" | "api" | "appearance" | "vault" | "plugins" | "marketplace" | "features" | "shortcuts" | "about"
 
 const SECTIONS: { id: SectionId; label: string; icon: React.ReactNode }[] = [
   { id: "general", label: "General", icon: <FiSettings size={16} /> },
   { id: "editor", label: "Editor", icon: <FiEdit3 size={16} /> },
   { id: "ai", label: "AI / SAM", icon: <HiOutlineCpuChip size={16} /> },
   { id: "mcp", label: "MCP", icon: <FiLink size={16} /> },
+  { id: "api", label: "API", icon: <FiKey size={16} /> },
   { id: "appearance", label: "Appearance", icon: <FiSun size={16} /> },
+  { id: "features", label: "Features", icon: <FiGrid size={16} /> },
   { id: "vault", label: "Vault & Data", icon: <FiDatabase size={16} /> },
+  { id: "plugins", label: "Plugins", icon: <FiPackage size={16} /> },
+  { id: "marketplace", label: "Marketplace", icon: <FiGlobe size={16} /> },
   { id: "shortcuts", label: "Shortcuts", icon: <FiCommand size={16} /> },
   { id: "about", label: "About", icon: <FiInfo size={16} /> },
 ]
@@ -206,7 +248,7 @@ function Toggle({
         className="absolute top-0.5 w-4 h-4 rounded-full transition-all duration-200"
         style={{
           left: checked ? "calc(100% - 18px)" : "2px",
-          backgroundColor: checked ? "#000" : "var(--text-tertiary)",
+          backgroundColor: checked ? "var(--text-on-accent)" : "var(--text-secondary)",
           boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
         }}
       />
@@ -325,6 +367,7 @@ function Kbd({ children }: { children: string }) {
 export function SettingsPanel() {
   const { notes } = useNotes()
   const { setTheme } = useTesserinTheme()
+  const createAPI = usePluginAPI()
   const [activeSection, setActiveSection] = useState<SectionId>("general")
   const [settings, setSettings] = useState<SettingsValues>({ ...DEFAULTS })
   const [dirty, setDirty] = useState(false)
@@ -340,6 +383,49 @@ export function SettingsPanel() {
   const [mcpNewServerUrl, setMcpNewServerUrl] = useState("")
   const [mcpNewServerCommand, setMcpNewServerCommand] = useState("")
   const [mcpNewServerArgs, setMcpNewServerArgs] = useState("")
+
+  // Plugin state
+  const { plugins: registeredPlugins } = usePlugins()
+  const [pluginToggles, setPluginToggles] = useState<Record<string, boolean>>({})
+
+  // API state
+  const [apiKeys, setApiKeys] = useState<Array<{
+    id: string; name: string; prefix: string; permissions: string;
+    created_at: string; last_used_at: string | null;
+    expires_at: string | null; is_revoked: number;
+  }>>([])
+  const [apiServerStatus, setApiServerStatus] = useState<{ running: boolean; port: number }>({ running: false, port: 9960 })
+  const [apiNewKeyName, setApiNewKeyName] = useState("")
+  const [apiNewKeyPermissions, setApiNewKeyPermissions] = useState<string[]>(["*"])
+  const [apiNewKeyRevealed, setApiNewKeyRevealed] = useState<string | null>(null)
+  const [apiPort, setApiPort] = useState("9960")
+  const [apiCopied, setApiCopied] = useState(false)
+
+  // Load plugin enabled states from localStorage
+  useEffect(() => {
+    const toggles: Record<string, boolean> = {}
+    for (const p of registeredPlugins) {
+      const key = `tesserin:plugin:${p.id}`
+      toggles[p.id] = localStorage.getItem(key) === "true"
+    }
+    setPluginToggles(toggles)
+  }, [registeredPlugins])
+
+  // Load API keys and server status
+  useEffect(() => {
+    async function loadApi() {
+      if (typeof window !== "undefined" && window.tesserin?.api) {
+        try {
+          const keys = await window.tesserin.api.keys.list()
+          setApiKeys(keys)
+          const status = await window.tesserin.api.server.status()
+          setApiServerStatus(status)
+          setApiPort(String(status.port))
+        } catch {}
+      }
+    }
+    loadApi()
+  }, [])
 
   /* ---- Load persisted settings ---- */
   useEffect(() => {
@@ -480,8 +566,6 @@ export function SettingsPanel() {
             { value: "canvas", label: "Canvas" },
             { value: "graph", label: "Graph" },
             { value: "code", label: "Code" },
-            { value: "kanban", label: "Kanban" },
-            { value: "daily", label: "Daily Notes" },
             { value: "sam", label: "SAM" },
           ]}
         />
@@ -1030,7 +1114,7 @@ export function SettingsPanel() {
           />
           <div
             className="skeuo-btn px-4 py-2 rounded-xl text-[11px] font-bold"
-            style={{ backgroundColor: settings["appearance.accentColor"], color: "#000" }}
+            style={{ backgroundColor: settings["appearance.accentColor"], color: "var(--text-on-accent)" }}
           >
             Button
           </div>
@@ -1172,7 +1256,7 @@ export function SettingsPanel() {
             boxShadow: "0 0 30px rgba(250,204,21,0.3), inset 0 2px 4px rgba(255,255,255,0.3)",
           }}
         >
-          <HiOutlineSparkles size={32} className="text-gray-900" />
+          <HiOutlineSparkles size={32} style={{ color: "var(--text-on-accent)" }} />
         </div>
         <div>
           <div className="text-lg font-bold tracking-wide" style={{ color: "var(--text-primary)" }}>Tesserin</div>
@@ -1242,6 +1326,601 @@ export function SettingsPanel() {
     </div>
   )
 
+  /* ---- API key & server handlers ---- */
+  const createApiKey = useCallback(async () => {
+    if (!apiNewKeyName.trim()) return
+    if (typeof window === "undefined" || !window.tesserin?.api) return
+    try {
+      const result = await window.tesserin.api.keys.create({
+        name: apiNewKeyName.trim(),
+        permissions: apiNewKeyPermissions,
+      })
+      setApiNewKeyRevealed(result.rawKey)
+      setApiNewKeyName("")
+      // Refresh list
+      const keys = await window.tesserin.api.keys.list()
+      setApiKeys(keys)
+    } catch (err) {
+      console.error("[API] Failed to create key:", err)
+    }
+  }, [apiNewKeyName, apiNewKeyPermissions])
+
+  const revokeApiKey = useCallback(async (id: string) => {
+    if (typeof window === "undefined" || !window.tesserin?.api) return
+    await window.tesserin.api.keys.revoke(id)
+    const keys = await window.tesserin.api.keys.list()
+    setApiKeys(keys)
+  }, [])
+
+  const deleteApiKeyHandler = useCallback(async (id: string) => {
+    if (typeof window === "undefined" || !window.tesserin?.api) return
+    if (!confirm("Delete this API key permanently?")) return
+    await window.tesserin.api.keys.delete(id)
+    const keys = await window.tesserin.api.keys.list()
+    setApiKeys(keys)
+  }, [])
+
+  const toggleApiServer = useCallback(async () => {
+    if (typeof window === "undefined" || !window.tesserin?.api) return
+    if (apiServerStatus.running) {
+      await window.tesserin.api.server.stop()
+      setApiServerStatus({ running: false, port: apiServerStatus.port })
+    } else {
+      const port = parseInt(apiPort) || 9960
+      const result = await window.tesserin.api.server.start(port)
+      setApiServerStatus(result)
+      setApiPort(String(result.port))
+    }
+  }, [apiServerStatus, apiPort])
+
+  const copyToClipboard = useCallback((text: string) => {
+    navigator.clipboard.writeText(text)
+    setApiCopied(true)
+    setTimeout(() => setApiCopied(false), 2000)
+  }, [])
+
+  const renderApi = () => {
+    const AVAILABLE_PERMISSIONS = [
+      { value: "*", label: "Full Access" },
+      { value: "notes:read", label: "Read Notes" },
+      { value: "notes:write", label: "Write Notes" },
+      { value: "tasks:read", label: "Read Tasks" },
+      { value: "tasks:write", label: "Write Tasks" },
+      { value: "ai:use", label: "Use AI" },
+    ]
+
+    return (
+      <div>
+        <SectionHeading title="API Access" icon={<FiKey size={16} />} />
+
+        <div className="text-[11px] mb-4" style={{ color: "var(--text-tertiary)" }}>
+          Generate API keys to let external agents, scripts, and automations interact with Tesserin's capabilities
+          over a local REST API. Any agent with a valid key can read/write notes, manage tasks, and use AI.
+        </div>
+
+        {/* Server status card */}
+        <div
+          className="mb-4 p-3.5 rounded-xl"
+          style={{
+            background: "var(--bg-panel-inset)",
+            boxShadow: "var(--input-inner-shadow)",
+            border: "1px solid var(--border-dark)",
+          }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div
+                className="w-2.5 h-2.5 rounded-full"
+                style={{
+                  backgroundColor: apiServerStatus.running ? "#22c55e" : "#666",
+                  boxShadow: apiServerStatus.running ? "0 0 8px #22c55e" : "none",
+                }}
+              />
+              <span className="text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                API Server
+              </span>
+              {apiServerStatus.running && (
+                <span className="text-[10px] font-mono" style={{ color: "var(--text-tertiary)" }}>
+                  · http://127.0.0.1:{apiServerStatus.port}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={toggleApiServer}
+              className="skeuo-btn px-3 py-1.5 rounded-xl text-[10px] font-semibold flex items-center gap-1.5 hover:brightness-110 active:scale-95 transition-all"
+              style={{ color: apiServerStatus.running ? "#ef4444" : "var(--accent-primary)" }}
+            >
+              {apiServerStatus.running ? <><FiPause size={10} /> Stop Server</> : <><FiPlay size={10} /> Start Server</>}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Port:</span>
+            <TextInput
+              value={apiPort}
+              onChange={setApiPort}
+              placeholder="9960"
+              type="number"
+              min="1024"
+              max="65535"
+            />
+          </div>
+        </div>
+
+        {/* Generate new key */}
+        <div className="mt-5">
+          <div className="text-[10px] font-semibold uppercase tracking-wider mb-3" style={{ color: "var(--text-tertiary)" }}>
+            GENERATE API KEY
+          </div>
+          <div
+            className="p-3.5 rounded-xl space-y-3"
+            style={{
+              background: "var(--bg-panel-inset)",
+              boxShadow: "var(--input-inner-shadow)",
+              border: "1px solid var(--border-dark)",
+            }}
+          >
+            <TextInput
+              value={apiNewKeyName}
+              onChange={setApiNewKeyName}
+              placeholder="Key name (e.g. My Automation Agent)"
+            />
+
+            <div>
+              <div className="text-[10px] font-medium mb-1.5" style={{ color: "var(--text-tertiary)" }}>Permissions</div>
+              <div className="flex flex-wrap gap-1.5">
+                {AVAILABLE_PERMISSIONS.map((perm) => {
+                  const isSelected = apiNewKeyPermissions.includes(perm.value)
+                  return (
+                    <button
+                      key={perm.value}
+                      onClick={() => {
+                        if (perm.value === "*") {
+                          setApiNewKeyPermissions(["*"])
+                        } else {
+                          setApiNewKeyPermissions((prev) => {
+                            const filtered = prev.filter((p) => p !== "*")
+                            return isSelected
+                              ? filtered.filter((p) => p !== perm.value)
+                              : [...filtered, perm.value]
+                          })
+                        }
+                      }}
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-medium transition-all"
+                      style={{
+                        backgroundColor: isSelected ? "var(--accent-primary)" : "var(--bg-panel)",
+                        color: isSelected ? "var(--text-on-accent)" : "var(--text-secondary)",
+                        border: `1px solid ${isSelected ? "transparent" : "var(--border-dark)"}`,
+                      }}
+                    >
+                      {perm.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <button
+              onClick={createApiKey}
+              disabled={!apiNewKeyName.trim()}
+              className="skeuo-btn w-full px-3 py-2 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1.5 hover:brightness-110 active:scale-95 transition-all disabled:opacity-30"
+              style={{ color: "var(--accent-primary)" }}
+            >
+              <FiPlus size={11} />
+              Generate Key
+            </button>
+          </div>
+        </div>
+
+        {/* Newly created key reveal */}
+        {apiNewKeyRevealed && (
+          <div
+            className="mt-3 p-3.5 rounded-xl"
+            style={{
+              background: "rgba(250,204,21,0.06)",
+              border: "1px solid rgba(250,204,21,0.2)",
+            }}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <FiAlertTriangle size={12} style={{ color: "var(--accent-primary)" }} />
+              <span className="text-[10px] font-bold" style={{ color: "var(--accent-primary)" }}>
+                Copy this key now — it won't be shown again!
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <code
+                className="flex-1 text-[10px] font-mono p-2 rounded-lg break-all"
+                style={{
+                  backgroundColor: "var(--bg-panel-inset)",
+                  color: "var(--text-primary)",
+                  border: "1px solid var(--border-dark)",
+                }}
+              >
+                {apiNewKeyRevealed}
+              </code>
+              <button
+                onClick={() => copyToClipboard(apiNewKeyRevealed)}
+                className="skeuo-btn p-2 rounded-lg hover:brightness-110 active:scale-95 transition-all"
+                style={{ color: apiCopied ? "#22c55e" : "var(--text-secondary)" }}
+                title="Copy to clipboard"
+              >
+                {apiCopied ? <FiCheck size={14} /> : <FiCopy size={14} />}
+              </button>
+            </div>
+            <button
+              onClick={() => setApiNewKeyRevealed(null)}
+              className="mt-2 text-[9px] font-medium"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* Existing keys */}
+        <div className="mt-6">
+          <div className="text-[10px] font-semibold uppercase tracking-wider mb-3" style={{ color: "var(--text-tertiary)" }}>
+            API KEYS ({apiKeys.length})
+          </div>
+
+          {apiKeys.length === 0 && (
+            <div className="text-[11px] py-4 text-center" style={{ color: "var(--text-tertiary)", opacity: 0.6 }}>
+              No API keys generated yet. Create one above to get started.
+            </div>
+          )}
+
+          {apiKeys.map((key) => {
+            const isRevoked = key.is_revoked === 1
+            const isExpired = key.expires_at ? new Date(key.expires_at) < new Date() : false
+            const isActive = !isRevoked && !isExpired
+            let perms: string[] = []
+            try { perms = JSON.parse(key.permissions) } catch {}
+
+            return (
+              <div
+                key={key.id}
+                className="mb-2 p-3 rounded-xl"
+                style={{
+                  background: "var(--bg-panel-inset)",
+                  boxShadow: "var(--input-inner-shadow)",
+                  border: "1px solid var(--border-dark)",
+                  opacity: isActive ? 1 : 0.5,
+                }}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{
+                        backgroundColor: isActive ? "#22c55e" : "#ef4444",
+                        boxShadow: isActive ? "0 0 6px #22c55e" : "none",
+                      }}
+                    />
+                    <span className="text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                      {key.name}
+                    </span>
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: "var(--bg-panel)", color: "var(--text-tertiary)" }}>
+                      {key.prefix}…
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {isActive && (
+                      <button
+                        onClick={() => revokeApiKey(key.id)}
+                        className="skeuo-btn px-2 py-1 rounded-lg text-[9px] font-semibold flex items-center gap-1 hover:brightness-110 active:scale-95 transition-all"
+                        style={{ color: "#f59e0b" }}
+                      >
+                        <FiShield size={9} /> Revoke
+                      </button>
+                    )}
+                    <button
+                      onClick={() => deleteApiKeyHandler(key.id)}
+                      className="skeuo-btn px-2 py-1 rounded-lg text-[9px] font-semibold flex items-center gap-1 hover:brightness-110 active:scale-95 transition-all"
+                      style={{ color: "#ef4444" }}
+                    >
+                      <FiTrash2 size={9} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 text-[9px]" style={{ color: "var(--text-tertiary)" }}>
+                  <span>Created: {new Date(key.created_at).toLocaleDateString()}</span>
+                  {key.last_used_at && <span>Last used: {new Date(key.last_used_at).toLocaleDateString()}</span>}
+                  {isRevoked && <span style={{ color: "#ef4444" }}>Revoked</span>}
+                  {isExpired && !isRevoked && <span style={{ color: "#ef4444" }}>Expired</span>}
+                </div>
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {perms.map((p) => (
+                    <span
+                      key={p}
+                      className="px-1.5 py-0.5 rounded text-[8px] font-mono"
+                      style={{
+                        backgroundColor: "var(--bg-panel)",
+                        color: "var(--text-tertiary)",
+                        border: "1px solid var(--border-dark)",
+                      }}
+                    >
+                      {p}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Usage docs */}
+        <div
+          className="mt-6 p-3.5 rounded-xl text-[10px] leading-relaxed space-y-2"
+          style={{
+            backgroundColor: "var(--bg-panel-inset)",
+            color: "var(--text-tertiary)",
+            boxShadow: "var(--input-inner-shadow)",
+            border: "1px solid var(--border-dark)",
+          }}
+        >
+          <div className="text-[10px] font-semibold" style={{ color: "var(--text-secondary)" }}>Quick Start</div>
+          <div>
+            Start the API server, generate a key, then call any endpoint:
+          </div>
+          <code
+            className="block p-2 rounded-lg font-mono text-[9px] whitespace-pre"
+            style={{ backgroundColor: "var(--bg-panel)", color: "var(--accent-primary)" }}
+          >
+{`curl http://127.0.0.1:${apiServerStatus.port}/api/notes \\
+  -H "Authorization: Bearer YOUR_KEY"`}
+          </code>
+          <div className="mt-2">
+            <strong style={{ color: "var(--text-secondary)" }}>Available endpoints:</strong>
+          </div>
+          <div className="font-mono text-[9px] space-y-0.5">
+            <div>GET  /api/notes · /api/notes/:id · /api/notes/search/:q</div>
+            <div>POST /api/notes · PUT /api/notes/:id · DELETE /api/notes/:id</div>
+            <div>GET  /api/tags · POST /api/tags · DELETE /api/tags/:id</div>
+            <div>GET  /api/folders · POST /api/folders · DELETE /api/folders/:id</div>
+            <div>GET  /api/tasks · POST /api/tasks · PUT /api/tasks/:id</div>
+            <div>POST /api/ai/chat · /api/ai/summarize · /api/ai/generate-tags</div>
+            <div>GET  /api/vault/summary · /api/health</div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  /* ---- Plugin toggle handler (uses shared API factory from PluginProvider) ---- */
+  const togglePlugin = useCallback(async (pluginId: string, enable: boolean) => {
+    const key = `tesserin:plugin:${pluginId}`
+    localStorage.setItem(key, String(enable))
+    setPluginToggles((prev) => ({ ...prev, [pluginId]: enable }))
+
+    if (enable) {
+      await pluginRegistry.activate(pluginId, createAPI)
+    } else {
+      await pluginRegistry.deactivate(pluginId)
+    }
+  }, [createAPI])
+
+  const renderPlugins = () => {
+    // Separate core plugins, workspace plugins, and community plugins
+    const corePluginIds = new Set(["com.tesserin.word-count", "com.tesserin.daily-quote", "com.tesserin.backlinks"])
+    const corePlugins = registeredPlugins.filter((p) => corePluginIds.has(p.id))
+    const workspacePlugins = registeredPlugins.filter((p) => !corePluginIds.has(p.id) && p.id.startsWith("com.tesserin."))
+    const communityPlugins = registeredPlugins.filter((p) => p.id.startsWith("community."))
+
+    const renderPluginRow = (p: typeof registeredPlugins[0], showToggle: boolean) => {
+      const isEnabled = pluginToggles[p.id] ?? p.enabled
+      return (
+        <div
+          key={p.id}
+          className="flex items-center justify-between py-3 border-b"
+          style={{ borderColor: "rgba(255,255,255,0.04)" }}
+        >
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{
+                background: isEnabled ? "rgba(250,204,21,0.08)" : "var(--bg-panel-inset)",
+                boxShadow: isEnabled ? "0 0 12px rgba(250,204,21,0.1)" : "var(--input-inner-shadow)",
+                border: `1px solid ${isEnabled ? "rgba(250,204,21,0.2)" : "var(--border-dark)"}`,
+              }}
+            >
+              {p.manifest.icon || <FiPackage size={14} style={{ color: isEnabled ? "var(--accent-primary)" : "var(--text-tertiary)" }} />}
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>{p.manifest.name}</div>
+              <div className="text-[10px] truncate" style={{ color: "var(--text-tertiary)" }}>{p.manifest.description}</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 ml-3">
+            <span
+              className="text-[9px] font-mono px-2 py-0.5 rounded-lg"
+              style={{
+                backgroundColor: "var(--bg-panel-inset)",
+                color: "var(--text-tertiary)",
+                border: "1px solid var(--border-dark)",
+              }}
+            >
+              v{p.manifest.version}
+            </span>
+            {showToggle ? (
+              <Toggle
+                checked={isEnabled}
+                onChange={(v) => togglePlugin(p.id, v)}
+              />
+            ) : (
+              <span
+                className="text-[9px] px-2 py-0.5 rounded-lg font-semibold"
+                style={{ backgroundColor: "rgba(34,197,94,0.1)", color: "#22c55e" }}
+              >
+                Always On
+              </span>
+            )}
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div>
+        <SectionHeading title="Plugins" icon={<FiPackage size={16} />} />
+
+        <div className="text-[11px] mb-5" style={{ color: "var(--text-tertiary)" }}>
+          Manage workspace views, extensions, and community plugins. Core plugins
+          are always active. Toggle others on or off as needed.
+        </div>
+
+        {/* Core plugins */}
+        <div className="mb-6">
+          <div className="text-[10px] font-semibold uppercase tracking-wider mb-3" style={{ color: "var(--text-tertiary)" }}>
+            CORE PLUGINS
+          </div>
+          {corePlugins.map((p) => renderPluginRow(p, false))}
+        </div>
+
+        {/* Workspace plugins */}
+        {workspacePlugins.length > 0 && (
+          <div className="mb-6">
+            <div className="text-[10px] font-semibold uppercase tracking-wider mb-3" style={{ color: "var(--text-tertiary)" }}>
+              WORKSPACE PLUGINS
+            </div>
+            {workspacePlugins.map((p) => renderPluginRow(p, true))}
+          </div>
+        )}
+
+        {/* Community plugins */}
+        {communityPlugins.length > 0 && (
+          <div className="mb-6">
+            <div className="text-[10px] font-semibold uppercase tracking-wider mb-3" style={{ color: "var(--text-tertiary)" }}>
+              COMMUNITY PLUGINS
+            </div>
+            {communityPlugins.map((p) => renderPluginRow(p, true))}
+          </div>
+        )}
+
+        {/* Info box */}
+        <div
+          className="mt-6 p-3 rounded-xl text-[10px] leading-relaxed"
+          style={{
+            backgroundColor: "var(--bg-panel-inset)",
+            color: "var(--text-tertiary)",
+            boxShadow: "var(--input-inner-shadow)",
+            border: "1px solid var(--border-dark)",
+          }}
+        >
+          <strong style={{ color: "var(--text-secondary)" }}>Note:</strong> Enabling a workspace plugin adds a new tab
+          to the left dock. Disabling it removes the tab but does not delete any data you created with it.
+        </div>
+      </div>
+    )
+  }
+
+  const renderMarketplace = () => (
+    <div className="h-full">
+      <CommunityPluginsPanel />
+    </div>
+  )
+
+  const renderFeatures = () => {
+    const FEATURE_ITEMS: { key: SettingKey; label: string; description: string; icon: React.ReactNode }[] = [
+      { key: "features.canvas", label: "Canvas", description: "Infinite whiteboard for visual thinking and diagrams.", icon: <FiCompass size={14} /> },
+      { key: "features.graph", label: "Graph View", description: "Interactive knowledge graph visualizing note connections.", icon: <HiOutlineCpuChip size={14} /> },
+      { key: "features.codeView", label: "Code Editor", description: "Built-in code view with syntax highlighting.", icon: <FiCode size={14} /> },
+      { key: "features.sam", label: "SAM (AI Assistant)", description: "AI-powered assistant for writing, summarizing, and brainstorming.", icon: <HiOutlineSparkles size={14} /> },
+      { key: "features.floatingChat", label: "Floating AI Chat", description: "Quick-access AI chat bubble in the bottom-right corner.", icon: <HiOutlineSparkles size={14} /> },
+      { key: "features.statusBar", label: "Status Bar", description: "Bottom bar showing tips and plugin widgets.", icon: <FiMonitor size={14} /> },
+      { key: "features.backlinks", label: "Backlinks Panel", description: "See which notes link to the current note.", icon: <FiLink size={14} /> },
+      { key: "features.versionHistory", label: "Version History", description: "Track and restore previous versions of notes.", icon: <FiClock size={14} /> },
+      { key: "features.references", label: "Reference Manager", description: "Manage academic citations and bibliography.", icon: <FiDatabase size={14} /> },
+      { key: "features.splitPanes", label: "Split Panes", description: "Side-by-side editing of two notes.", icon: <FiGrid size={14} /> },
+      { key: "features.dailyNotes", label: "Daily Notes / Quick Capture", description: "Quick-capture overlay for rapid note creation.", icon: <FiEdit3 size={14} /> },
+      { key: "features.templates", label: "Template Manager", description: "Create notes from pre-defined templates.", icon: <FiType size={14} /> },
+    ]
+
+    const enabledCount = FEATURE_ITEMS.filter(f => settings[f.key] === "true").length
+
+    return (
+      <div>
+        <SectionHeading title="Features" icon={<FiGrid size={16} />} />
+
+        <div className="text-[11px] mb-5" style={{ color: "var(--text-tertiary)" }}>
+          Toggle features on or off to customize your workspace. Disabled features are hidden from the interface
+          but no data is lost.{" "}
+          <span style={{ color: "var(--accent-primary)" }}>{enabledCount}/{FEATURE_ITEMS.length} enabled</span>
+        </div>
+
+        {/* Quick actions */}
+        <div className="flex items-center gap-2 mb-5">
+          <button
+            onClick={() => {
+              FEATURE_ITEMS.forEach(f => update(f.key, "true"))
+            }}
+            className="skeuo-btn px-3 py-1.5 rounded-xl text-[10px] font-semibold flex items-center gap-1.5 hover:brightness-110 active:scale-95 transition-all"
+            style={{ color: "var(--accent-primary)" }}
+          >
+            <FiCheck size={10} /> Enable All
+          </button>
+          <button
+            onClick={() => {
+              FEATURE_ITEMS.forEach(f => update(f.key, "false"))
+            }}
+            className="skeuo-btn px-3 py-1.5 rounded-xl text-[10px] font-semibold flex items-center gap-1.5 hover:brightness-110 active:scale-95 transition-all"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            <FiEye size={10} /> Disable All
+          </button>
+        </div>
+
+        {/* Feature toggles */}
+        <div className="space-y-0">
+          {FEATURE_ITEMS.map((feature) => (
+            <div
+              key={feature.key}
+              className="flex items-center justify-between py-3.5 border-b"
+              style={{ borderColor: "rgba(255,255,255,0.04)" }}
+            >
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div
+                  className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{
+                    background: settings[feature.key] === "true" ? "rgba(250,204,21,0.08)" : "var(--bg-panel-inset)",
+                    boxShadow: settings[feature.key] === "true" ? "0 0 12px rgba(250,204,21,0.1)" : "var(--input-inner-shadow)",
+                    border: `1px solid ${settings[feature.key] === "true" ? "rgba(250,204,21,0.2)" : "var(--border-dark)"}`,
+                    color: settings[feature.key] === "true" ? "var(--accent-primary)" : "var(--text-tertiary)",
+                  }}
+                >
+                  {feature.icon}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>{feature.label}</div>
+                  <div className="text-[10px] truncate" style={{ color: "var(--text-tertiary)" }}>{feature.description}</div>
+                </div>
+              </div>
+              <div className="ml-3">
+                <Toggle
+                  checked={settings[feature.key] === "true"}
+                  onChange={(v) => update(feature.key, String(v))}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Info box */}
+        <div
+          className="mt-6 p-3 rounded-xl text-[10px] leading-relaxed"
+          style={{
+            backgroundColor: "var(--bg-panel-inset)",
+            color: "var(--text-tertiary)",
+            boxShadow: "var(--input-inner-shadow)",
+            border: "1px solid var(--border-dark)",
+          }}
+        >
+          <strong style={{ color: "var(--text-secondary)" }}>Tip:</strong> Disabling a tab (e.g. Canvas, Graph) removes it from the left dock.
+          Disabling overlays (e.g. Floating Chat, Templates) hides their UI. You can re-enable everything at any time.
+        </div>
+      </div>
+    )
+  }
+
   /* ---- Section router ---- */
   const sectionContent = useMemo(() => {
     switch (activeSection) {
@@ -1249,13 +1928,17 @@ export function SettingsPanel() {
       case "editor": return renderEditor()
       case "ai": return renderAI()
       case "mcp": return renderMCP()
+      case "api": return renderApi()
       case "appearance": return renderAppearance()
+      case "features": return renderFeatures()
       case "vault": return renderVault()
+      case "plugins": return renderPlugins()
+      case "marketplace": return renderMarketplace()
       case "shortcuts": return renderShortcuts()
       case "about": return renderAbout()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSection, settings, aiStatus, aiModels, vaultStats, mcp.servers, mcp.statuses, mcp.tools, mcpNewServerName, mcpNewServerTransport, mcpNewServerUrl, mcpNewServerCommand, mcpNewServerArgs])
+  }, [activeSection, settings, aiStatus, aiModels, vaultStats, mcp.servers, mcp.statuses, mcp.tools, mcpNewServerName, mcpNewServerTransport, mcpNewServerUrl, mcpNewServerCommand, mcpNewServerArgs, registeredPlugins, pluginToggles, apiKeys, apiServerStatus, apiNewKeyName, apiNewKeyPermissions, apiNewKeyRevealed, apiPort, apiCopied])
 
   /* ================================================================ */
   /*  RENDER                                                           */
@@ -1345,7 +2028,7 @@ export function SettingsPanel() {
         </div>
 
         {/* Section content */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 max-w-2xl">
+        <div className={`flex-1 overflow-y-auto custom-scrollbar ${activeSection === "marketplace" ? "p-0" : "p-6"}`}>
           {sectionContent}
         </div>
       </div>

@@ -24,12 +24,9 @@ export interface TesserinTip {
     | "open-quick-capture"
     | "open-references"
     | "open-split"
-    | "navigate-daily"
     | "navigate-graph"
     | "navigate-canvas"
-    | "navigate-kanban"
     | "navigate-sam"
-    | "navigate-timeline"
     | "navigate-settings"
   /** Icon hint for the UI to pick the right icon */
   icon?: "keyboard" | "sparkle" | "lightbulb" | "rocket" | "brain" | "zap"
@@ -130,31 +127,10 @@ export const TESSERIN_TIPS: TesserinTip[] = [
     icon: "sparkle",
   },
   {
-    id: "tip-daily-notes",
-    text: "Daily Notes auto-create a journal for each day — pick a template and build a writing streak.",
-    category: "feature",
-    action: "navigate-daily",
-    icon: "sparkle",
-  },
-  {
     id: "tip-canvas",
     text: "The Canvas is an infinite whiteboard for visual thinking — sketch ideas, diagrams, and workflows.",
     category: "feature",
     action: "navigate-canvas",
-    icon: "sparkle",
-  },
-  {
-    id: "tip-kanban",
-    text: "Organize tasks visually with the Kanban board — drag and drop cards between columns.",
-    category: "feature",
-    action: "navigate-kanban",
-    icon: "sparkle",
-  },
-  {
-    id: "tip-timeline",
-    text: "The Timeline view shows your notes arranged chronologically — great for tracking project progress.",
-    category: "feature",
-    action: "navigate-timeline",
     icon: "sparkle",
   },
   {
@@ -185,13 +161,6 @@ export const TESSERIN_TIPS: TesserinTip[] = [
     text: "Type > in the search palette to enter command mode — run any Tesserin command by name.",
     category: "pro-tip",
     action: "open-search",
-    icon: "lightbulb",
-  },
-  {
-    id: "tip-daily-templates",
-    text: "Daily Notes support 6 built-in templates — Research Log, Zettelkasten, Meeting Notes, and more.",
-    category: "pro-tip",
-    action: "navigate-daily",
     icon: "lightbulb",
   },
   {

@@ -3,6 +3,18 @@
 import React from "react"
 
 /* ------------------------------------------------------------------ */
+/*  HTML sanitisation helpers (defence-in-depth)                       */
+/* ------------------------------------------------------------------ */
+
+/** Strip dangerous HTML tags from raw markdown before processing. */
+const DANGEROUS_TAG_RE =
+  /<\/?\s*(script|iframe|object|embed|form|input|textarea|button|link|meta|base|applet|style)\b[^>]*>/gi
+
+function stripDangerousHtml(text: string): string {
+  return text.replace(DANGEROUS_TAG_RE, "")
+}
+
+/* ------------------------------------------------------------------ */
 /*  Shared Markdown → React renderer                                    */
 /* ------------------------------------------------------------------ */
 
@@ -49,7 +61,10 @@ export function renderMarkdown(
   const onBlockRefClick = options?.onBlockRefClick
   const onCitationClick = options?.onCitationClick
 
-  const lines = markdown.split("\n")
+  // Defence-in-depth: strip dangerous HTML tags before processing.
+  // React JSX auto-escapes text, but this prevents edge-case leaks.
+  const sanitized = stripDangerousHtml(markdown)
+  const lines = sanitized.split("\n")
   const elements: React.ReactNode[] = []
   let i = 0
   let key = 0

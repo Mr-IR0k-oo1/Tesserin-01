@@ -423,7 +423,7 @@ export function ExportPanel({ isOpen, onClose, note }: ExportPanelProps) {
                       setBatchFormat(fmt)
                       setShowBatchMenu(false)
                     }}
-                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-white/5 transition-colors"
+                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-white/10 transition-colors"
                     style={{
                       color: fmt === batchFormat ? "var(--accent-primary)" : "var(--text-secondary)",
                     }}

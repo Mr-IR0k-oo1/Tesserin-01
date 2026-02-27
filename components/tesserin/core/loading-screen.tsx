@@ -37,7 +37,7 @@ export function LoadingScreen() {
   return (
     <div
       className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden transition-colors duration-500"
-      style={{ backgroundColor: isDark ? "#050505" : "#FCFBF8" }}
+      style={{ backgroundColor: isDark ? "#050505" : "#f8f6f1" }}
       role="status"
       aria-label="Loading Tesserin"
     >
@@ -64,7 +64,7 @@ export function LoadingScreen() {
           style={{
             width: Math.random() * 3 + 1,
             height: Math.random() * 3 + 1,
-            backgroundColor: isDark ? "rgba(250, 204, 21, 0.15)" : "rgba(234, 179, 8, 0.3)",
+            backgroundColor: isDark ? "rgba(250, 204, 21, 0.15)" : "rgba(212, 168, 41, 0.2)",
             left: `${10 + Math.random() * 80}%`,
             top: `${10 + Math.random() * 80}%`,
             animation: `loading-float ${4 + Math.random() * 4}s ease-in-out infinite`,
@@ -95,7 +95,7 @@ export function LoadingScreen() {
       >
         <p
           className="mt-5 text-base font-bold tracking-[0.35em] uppercase"
-          style={{ color: "#FACC15" }}
+          style={{ color: isDark ? "#FACC15" : "#d4a829" }}
         >
           Tesserin
         </p>
@@ -121,7 +121,7 @@ export function LoadingScreen() {
       <div
         className="mt-8 w-56 h-[3px] rounded-full overflow-hidden"
         style={{
-          backgroundColor: "rgba(255, 255, 255, 0.05)",
+          backgroundColor: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(120, 100, 70, 0.1)",
           opacity: phase >= 2 ? 1 : 0,
           transition: "opacity 0.4s ease",
         }}
@@ -129,10 +129,14 @@ export function LoadingScreen() {
         <div
           className="h-full rounded-full"
           style={{
-            background: "linear-gradient(90deg, #FACC15, #F59E0B)",
+            background: isDark
+              ? "linear-gradient(90deg, #FACC15, #F59E0B)"
+              : "linear-gradient(90deg, #d4a829, #c49b22)",
             animation: "loading-progress 1.6s cubic-bezier(0.65, 0, 0.35, 1) forwards",
             width: "0%",
-            boxShadow: "0 0 12px rgba(250, 204, 21, 0.4)",
+            boxShadow: isDark
+              ? "0 0 12px rgba(250, 204, 21, 0.4)"
+              : "0 0 12px rgba(212, 168, 41, 0.3)",
           }}
         />
       </div>
@@ -141,7 +145,7 @@ export function LoadingScreen() {
       <p
         className="mt-4 text-[10px] tracking-wider"
         style={{
-          color: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(44, 42, 38, 0.25)",
+          color: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(51, 48, 43, 0.2)",
           opacity: phase >= 2 ? 1 : 0,
           transition: "opacity 0.5s ease 0.3s",
         }}

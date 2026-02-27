@@ -41,14 +41,19 @@ export function TitleBar() {
                 <div className="flex items-center gap-1 titlebar-no-drag">
                     <button
                         onClick={handleMinimize}
-                        className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-white/10 transition-colors"
+                        className="w-7 h-7 flex items-center justify-center rounded-md transition-colors"
+                        style={{ ['--tw-bg-opacity' as string]: 1 }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--border-dark)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                         aria-label="Minimize"
                     >
                         <FiMinus size={14} style={{ color: "var(--text-secondary)" }} />
                     </button>
                     <button
                         onClick={handleMaximize}
-                        className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-white/10 transition-colors"
+                        className="w-7 h-7 flex items-center justify-center rounded-md transition-colors"
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--border-dark)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                         aria-label="Maximize"
                     >
                         <FiSquare size={11} style={{ color: "var(--text-secondary)" }} />

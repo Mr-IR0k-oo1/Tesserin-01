@@ -222,19 +222,29 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
                 boxShadow: isSelected ? "var(--input-inner-shadow)" : "none",
               }}
               onMouseEnter={(e) => {
-                if (!isSelected)
-                  e.currentTarget.style.backgroundColor =
-                    "var(--bg-panel-inset)"
+                if (!isSelected) {
+                  e.currentTarget.style.backgroundColor = "var(--bg-panel-inset)"
+                  const title = e.currentTarget.querySelector('[data-note-title]') as HTMLElement
+                  const preview = e.currentTarget.querySelector('[data-note-preview]') as HTMLElement
+                  if (title) title.style.color = "var(--text-primary)"
+                  if (preview) preview.style.opacity = "1"
+                }
               }}
               onMouseLeave={(e) => {
-                if (!isSelected)
+                if (!isSelected) {
                   e.currentTarget.style.backgroundColor = "transparent"
+                  const title = e.currentTarget.querySelector('[data-note-title]') as HTMLElement
+                  const preview = e.currentTarget.querySelector('[data-note-preview]') as HTMLElement
+                  if (title) title.style.color = "var(--text-primary)"
+                  if (preview) preview.style.opacity = "0.7"
+                }
               }}
               aria-current={isSelected ? "true" : undefined}
             >
               <FiFileText size={15} className="shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p
+                  data-note-title
                   className="text-sm font-semibold truncate"
                   style={{
                     color: isSelected
@@ -244,7 +254,7 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
                 >
                   {note.title}
                 </p>
-                <p className="text-xs mt-0.5 truncate opacity-70">
+                <p data-note-preview className="text-xs mt-0.5 truncate" style={{ opacity: 0.7, color: "var(--text-secondary)" }}>
                   {note.content
                     .replace(/^#.*\n?/gm, "")
                     .replace(/\[\[([^\]]+)\]\]/g, "$1")

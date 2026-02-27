@@ -95,10 +95,19 @@ class McpClientManager {
 
       if (config.transport === "stdio") {
         if (!config.command) throw new Error("stdio transport requires a command")
+        // Only pass safe env vars + user-provided overrides (not full process.env)
+        const SAFE_MCP_ENV_KEYS = [
+          'PATH', 'HOME', 'USER', 'SHELL', 'LANG', 'LC_ALL', 'LC_CTYPE',
+          'TERM', 'NODE_ENV', 'TMPDIR', 'TMP', 'TEMP',
+        ]
+        const baseEnv: Record<string, string> = {}
+        for (const key of SAFE_MCP_ENV_KEYS) {
+          if (process.env[key]) baseEnv[key] = process.env[key]!
+        }
         transport = new StdioClientTransport({
           command: config.command,
           args: config.args || [],
-          env: { ...process.env, ...(config.env || {}) } as Record<string, string>,
+          env: { ...baseEnv, ...(config.env || {}) },
         })
       } else if (config.transport === "sse") {
         if (!config.url) throw new Error("SSE transport requires a URL")

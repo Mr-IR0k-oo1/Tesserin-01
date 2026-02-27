@@ -569,7 +569,7 @@ export function DailyNotes({ quickCapture = false, onClose }: DailyNotesProps) {
                     <button
                       key={tmpl.id}
                       onClick={() => createEntry(tmpl.id)}
-                      className="w-full text-left px-3 py-2.5 hover:bg-white/5 transition-colors flex items-center gap-2"
+                      className="w-full text-left px-3 py-2.5 hover:bg-white/10 transition-colors flex items-center gap-2"
                     >
                       <HiOutlineSparkles
                         size={14}

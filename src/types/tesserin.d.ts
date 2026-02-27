@@ -140,11 +140,79 @@ interface TesserinMCP {
     getServerTools(serverId: string): Promise<TesserinMcpToolInfo[]>
 }
 
+interface TesserinTerminal {
+    spawn(cwd?: string): Promise<{ id: string; pid: number }>
+    write(id: string, data: string): void
+    resize(id: string, cols: number, rows: number): void
+    kill(id: string): void
+    onData(id: string, callback: (data: string) => void): () => void
+    onExit(id: string, callback: (exitCode: number) => void): () => void
+}
+
+interface TesserinFS {
+    readDir(dirPath: string): Promise<Array<{ name: string; path: string; isDirectory: boolean }>>
+    readFile(filePath: string): Promise<string>
+    writeFile(filePath: string, content: string): Promise<void>
+    stat(filePath: string): Promise<{ size: number; isDirectory: boolean; isFile: boolean; modified: string }>
+    mkdir(dirPath: string): Promise<void>
+    delete(filePath: string): Promise<void>
+}
+
+interface TesserinShell {
+    exec(command: string, cwd?: string): Promise<{ stdout: string; stderr: string; exitCode: number }>
+}
+
+interface TesserinDialog {
+    openFolder(): Promise<string | null>
+}
+
+interface TesserinApiKeyInfo {
+    id: string
+    name: string
+    prefix: string
+    permissions: string
+    created_at: string
+    last_used_at: string | null
+    expires_at: string | null
+    is_revoked: number
+}
+
+interface TesserinApiKeyCreateResult {
+    id: string
+    name: string
+    prefix: string
+    rawKey: string
+    permissions: string[]
+}
+
+interface TesserinApiKeys {
+    list(): Promise<TesserinApiKeyInfo[]>
+    create(data: { name: string; permissions?: string[]; expiresAt?: string }): Promise<TesserinApiKeyCreateResult>
+    revoke(id: string): Promise<void>
+    delete(id: string): Promise<void>
+}
+
+interface TesserinApiServer {
+    start(port?: number): Promise<{ running: boolean; port: number }>
+    stop(): Promise<{ running: boolean }>
+    status(): Promise<{ running: boolean; port: number }>
+}
+
+interface TesserinApiManager {
+    keys: TesserinApiKeys
+    server: TesserinApiServer
+}
+
 interface TesserinAPI {
     db: TesserinDB
     ai: TesserinAI
     window: TesserinWindow
     mcp?: TesserinMCP
+    terminal?: TesserinTerminal
+    fs?: TesserinFS
+    shell?: TesserinShell
+    dialog?: TesserinDialog
+    api?: TesserinApiManager
 }
 
 declare global {

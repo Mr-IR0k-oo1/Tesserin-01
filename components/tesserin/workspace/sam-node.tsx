@@ -37,12 +37,7 @@ import {
 } from "react-icons/hi2"
 import { useNotes } from "@/lib/notes-store"
 import { renderMarkdown } from "@/lib/markdown-renderer"
-
-/* ------------------------------------------------------------------ */
-/*  Constants                                                           */
-/* ------------------------------------------------------------------ */
-
-const OLLAMA_ENDPOINT = "http://localhost:11434"
+import { getOllamaEndpoint } from "@/lib/ollama-config"
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                               */
@@ -325,12 +320,12 @@ export function SAMNode() {
       }
     }
     try {
-      const res = await fetch(`${OLLAMA_ENDPOINT}/api/version`, {
+      const res = await fetch(`${getOllamaEndpoint()}/api/version`, {
         signal: AbortSignal.timeout(3000),
       })
       if (res.ok) {
         setIsConnected(true)
-        const tagRes = await fetch(`${OLLAMA_ENDPOINT}/api/tags`)
+        const tagRes = await fetch(`${getOllamaEndpoint()}/api/tags`)
         if (tagRes.ok) {
           const data = (await tagRes.json()) as { models?: Array<{ name: string }> }
           const models = (data.models || []).map((m: { name: string }) => m.name)
@@ -593,7 +588,7 @@ export function SAMNode() {
 
         // Direct HTTP streaming
         if (isConnected) {
-          const res = await fetch(`${OLLAMA_ENDPOINT}/api/chat`, {
+          const res = await fetch(`${getOllamaEndpoint()}/api/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ model: selectedModel, messages: apiMessages, stream: true }),
@@ -659,7 +654,7 @@ export function SAMNode() {
           if (last.role === "assistant" && last.content === "") {
             updated[updated.length - 1] = {
               role: "assistant",
-              content: `Connection error: ${err instanceof Error ? err.message : String(err)}. Is Ollama running on localhost:11434?`,
+              content: `Connection error: ${err instanceof Error ? err.message : String(err)}. Is Ollama running?`,
               isError: true,
               timestamp: Date.now(),
             }
@@ -741,7 +736,7 @@ export function SAMNode() {
                   boxShadow: "0 0 20px rgba(250,204,21,0.35), inset 0 1px 2px rgba(255,255,255,0.3)",
                 }}
               >
-                <HiOutlineCpuChip size={22} className="text-gray-900" />
+                <HiOutlineCpuChip size={22} style={{ color: "var(--text-on-accent)" }} />
               </div>
               <div>
                 <div className="text-sm font-bold tracking-wide" style={{ color: "var(--accent-primary)" }}>SAM</div>
@@ -905,7 +900,7 @@ export function SAMNode() {
                   boxShadow: "0 0 40px rgba(250,204,21,0.3), 0 0 80px rgba(250,204,21,0.1), inset 0 2px 4px rgba(255,255,255,0.3)",
                 }}
               >
-                <HiOutlineCpuChip size={40} className="text-gray-900" />
+                <HiOutlineCpuChip size={40} style={{ color: "var(--text-on-accent)" }} />
               </div>
               <h2 className="text-xl font-bold mb-1" style={{ color: "var(--accent-primary)" }}>SAM</h2>
               <p className="text-xs mb-1 font-mono" style={{ color: "var(--text-tertiary)" }}>Simulated Adaptive Matrix</p>
@@ -952,7 +947,7 @@ export function SAMNode() {
                         className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
                         style={{ background: "linear-gradient(135deg, #FACC15, #D97706)", boxShadow: "0 0 12px rgba(250,204,21,0.25)" }}
                       >
-                        <HiOutlineCpuChip size={14} className="text-gray-900" />
+                        <HiOutlineCpuChip size={14} style={{ color: "var(--text-on-accent)" }} />
                       </div>
                     )}
 

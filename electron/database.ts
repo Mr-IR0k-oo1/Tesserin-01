@@ -99,6 +99,18 @@ export function initDatabase(): void {
       updated_at  TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id           TEXT PRIMARY KEY,
+      name         TEXT NOT NULL,
+      key_hash     TEXT NOT NULL,
+      prefix       TEXT NOT NULL,
+      permissions  TEXT NOT NULL DEFAULT '["*"]',
+      created_at   TEXT DEFAULT (datetime('now')),
+      last_used_at TEXT,
+      expires_at   TEXT,
+      is_revoked   INTEGER DEFAULT 0
+    );
+
     /* ── Indexes for query patterns ── */
     CREATE INDEX IF NOT EXISTS idx_notes_folder     ON notes(folder_id);
     CREATE INDEX IF NOT EXISTS idx_notes_updated     ON notes(updated_at DESC);
@@ -393,4 +405,43 @@ export function updateCanvas(id: string, data: { name?: string; elements?: strin
 
 export function deleteCanvas(id: string) {
     return db.prepare('DELETE FROM canvases WHERE id = ?').run(id)
+}
+
+// ── API Key Operations ────────────────────────────────────────────────
+
+export function listApiKeys() {
+    return db.prepare('SELECT * FROM api_keys ORDER BY created_at DESC').all() as Array<{
+        id: string; name: string; key_hash: string; prefix: string;
+        permissions: string; created_at: string; last_used_at: string | null;
+        expires_at: string | null; is_revoked: number;
+    }>
+}
+
+export function getApiKey(id: string) {
+    return db.prepare('SELECT * FROM api_keys WHERE id = ?').get(id)
+}
+
+export function createApiKey(data: {
+    id: string; name: string; keyHash: string; prefix: string;
+    permissions: string[]; expiresAt?: string;
+}) {
+    db.prepare(
+        'INSERT INTO api_keys (id, name, key_hash, prefix, permissions, expires_at) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(
+        data.id, data.name, data.keyHash, data.prefix,
+        JSON.stringify(data.permissions), data.expiresAt || null
+    )
+    return db.prepare('SELECT * FROM api_keys WHERE id = ?').get(data.id)
+}
+
+export function revokeApiKey(id: string) {
+    db.prepare('UPDATE api_keys SET is_revoked = 1 WHERE id = ?').run(id)
+}
+
+export function deleteApiKey(id: string) {
+    return db.prepare('DELETE FROM api_keys WHERE id = ?').run(id)
+}
+
+export function touchApiKey(id: string) {
+    db.prepare("UPDATE api_keys SET last_used_at = datetime('now') WHERE id = ?").run(id)
 }

@@ -70,7 +70,17 @@ function lsGet<T>(key: string, fallback: T): T {
     } catch { return fallback }
 }
 function lsSet(key: string, value: unknown) {
-    try { localStorage.setItem(key, JSON.stringify(value)) } catch {}
+    try {
+        const json = JSON.stringify(value)
+        localStorage.setItem(key, json)
+    } catch (err) {
+        // Likely QuotaExceededError — notify the user
+        if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+            console.error('[Tesserin] localStorage quota exceeded — data was NOT saved. Consider using the Electron app for SQLite-backed storage.')
+            // Surface this to the UI if a global handler exists
+            window.dispatchEvent(new CustomEvent('tesserin:storage-quota-exceeded'))
+        }
+    }
 }
 
 /* ================================================================== */

@@ -191,7 +191,7 @@ export function BacklinksPanel({ compact = false }: BacklinksPanelProps) {
         {/* ── Backlinks (incoming) ── */}
         <div className="py-2">
           <button
-            className="w-full flex items-center gap-2 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider hover:bg-white/5 transition-colors"
+            className="w-full flex items-center gap-2 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider hover:bg-white/10 transition-colors"
             style={{ color: "var(--text-tertiary)" }}
             onClick={() => setShowBacklinks(!showBacklinks)}
           >
@@ -219,7 +219,7 @@ export function BacklinksPanel({ compact = false }: BacklinksPanelProps) {
                   <button
                     key={bl.noteId}
                     onClick={() => selectNote(bl.noteId)}
-                    className="w-full text-left px-4 py-2.5 hover:bg-white/5 transition-colors group"
+                    className="w-full text-left px-4 py-2.5 hover:bg-white/10 transition-colors group"
                   >
                     <div className="flex items-center gap-2">
                       <FiFileText size={13} style={{ color: "var(--accent-primary)", opacity: 0.7 }} />
@@ -270,7 +270,7 @@ export function BacklinksPanel({ compact = false }: BacklinksPanelProps) {
         {/* ── Outgoing links ── */}
         <div className="py-2">
           <button
-            className="w-full flex items-center gap-2 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider hover:bg-white/5 transition-colors"
+            className="w-full flex items-center gap-2 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider hover:bg-white/10 transition-colors"
             style={{ color: "var(--text-tertiary)" }}
             onClick={() => setShowOutgoing(!showOutgoing)}
           >
@@ -303,7 +303,7 @@ export function BacklinksPanel({ compact = false }: BacklinksPanelProps) {
                         if (!isUnresolved) selectNote(ol.noteId)
                       }}
                       className={`w-full text-left px-4 py-2.5 transition-colors group ${
-                        isUnresolved ? "opacity-60 cursor-default" : "hover:bg-white/5"
+                        isUnresolved ? "opacity-60 cursor-default" : "hover:bg-white/10"
                       }`}
                     >
                       <div className="flex items-center gap-2">
@@ -353,7 +353,7 @@ export function BacklinksPanel({ compact = false }: BacklinksPanelProps) {
         {blockRefs.length > 0 && (
           <div className="py-2">
             <button
-              className="w-full flex items-center gap-2 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider hover:bg-white/5 transition-colors"
+              className="w-full flex items-center gap-2 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider hover:bg-white/10 transition-colors"
               style={{ color: "var(--text-tertiary)" }}
               onClick={() => setShowBlockRefs(!showBlockRefs)}
             >
@@ -386,7 +386,7 @@ export function BacklinksPanel({ compact = false }: BacklinksPanelProps) {
                       <button
                         key={`${ref.sourceNoteId}-${idx}`}
                         onClick={() => selectNote(ref.sourceNoteId)}
-                        className="w-full text-left py-1 pl-3 hover:bg-white/5 transition-colors group flex items-center gap-2"
+                        className="w-full text-left py-1 pl-3 hover:bg-white/10 transition-colors group flex items-center gap-2"
                       >
                         <FiFileText size={11} style={{ color: "var(--text-tertiary)" }} />
                         <span className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>
@@ -412,7 +412,7 @@ export function BacklinksPanel({ compact = false }: BacklinksPanelProps) {
         {/* ── Unlinked Mentions ── */}
         <div className="py-2">
           <button
-            className="w-full flex items-center gap-2 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider hover:bg-white/5 transition-colors"
+            className="w-full flex items-center gap-2 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider hover:bg-white/10 transition-colors"
             style={{ color: "var(--text-tertiary)" }}
             onClick={() => setShowUnlinked(!showUnlinked)}
           >
@@ -443,7 +443,7 @@ export function BacklinksPanel({ compact = false }: BacklinksPanelProps) {
                   <button
                     key={mention.item.id}
                     onClick={() => selectNote(mention.item.id)}
-                    className="w-full text-left px-4 py-2.5 hover:bg-white/5 transition-colors group"
+                    className="w-full text-left px-4 py-2.5 hover:bg-white/10 transition-colors group"
                   >
                     <div className="flex items-center gap-2">
                       <FiEyeOff size={13} style={{ color: "var(--text-tertiary)", opacity: 0.7 }} />

@@ -141,6 +141,62 @@ const tesserinAPI = {
         getTools: () => ipcRenderer.invoke('mcp:getTools'),
         getServerTools: (serverId: string) => ipcRenderer.invoke('mcp:getServerTools', serverId),
     },
+
+    // ── Terminal (node-pty) ───────────────────────────────────────────
+    terminal: {
+        spawn: (cwd?: string) => ipcRenderer.invoke('terminal:spawn', cwd) as Promise<{ id: string; pid: number }>,
+        write: (id: string, data: string) => ipcRenderer.send('terminal:write', id, data),
+        resize: (id: string, cols: number, rows: number) => ipcRenderer.send('terminal:resize', id, cols, rows),
+        kill: (id: string) => ipcRenderer.send('terminal:kill', id),
+        onData: (id: string, callback: (data: string) => void) => {
+            const channel = `terminal:data:${id}`
+            const listener = (_e: Electron.IpcRendererEvent, data: string) => callback(data)
+            ipcRenderer.on(channel, listener)
+            return () => { ipcRenderer.removeListener(channel, listener) }
+        },
+        onExit: (id: string, callback: (exitCode: number) => void) => {
+            const channel = `terminal:exit:${id}`
+            const listener = (_e: Electron.IpcRendererEvent, code: number) => callback(code)
+            ipcRenderer.on(channel, listener)
+            return () => { ipcRenderer.removeListener(channel, listener) }
+        },
+    },
+
+    // ── Filesystem ────────────────────────────────────────────────────
+    fs: {
+        readDir: (dirPath: string) => ipcRenderer.invoke('fs:readDir', dirPath) as Promise<Array<{ name: string; path: string; isDirectory: boolean }>>,
+        readFile: (filePath: string) => ipcRenderer.invoke('fs:readFile', filePath) as Promise<string>,
+        writeFile: (filePath: string, content: string) => ipcRenderer.invoke('fs:writeFile', filePath, content),
+        stat: (filePath: string) => ipcRenderer.invoke('fs:stat', filePath) as Promise<{ size: number; isDirectory: boolean; isFile: boolean; modified: string }>,
+        mkdir: (dirPath: string) => ipcRenderer.invoke('fs:mkdir', dirPath) as Promise<void>,
+        delete: (filePath: string) => ipcRenderer.invoke('fs:delete', filePath) as Promise<void>,
+    },
+
+    // ── Shell Exec (non-interactive) ──────────────────────────────────
+    shell: {
+        exec: (command: string, cwd?: string) => ipcRenderer.invoke('shell:exec', command, cwd) as Promise<{ stdout: string; stderr: string; exitCode: number }>,
+    },
+
+    // ── Dialog ────────────────────────────────────────────────────────
+    dialog: {
+        openFolder: () => ipcRenderer.invoke('dialog:openFolder') as Promise<string | null>,
+    },
+
+    // ── API Keys & Server ─────────────────────────────────────────────
+    api: {
+        keys: {
+            list: () => ipcRenderer.invoke('api:keys:list'),
+            create: (data: { name: string; permissions?: string[]; expiresAt?: string }) =>
+                ipcRenderer.invoke('api:keys:create', data),
+            revoke: (id: string) => ipcRenderer.invoke('api:keys:revoke', id),
+            delete: (id: string) => ipcRenderer.invoke('api:keys:delete', id),
+        },
+        server: {
+            start: (port?: number) => ipcRenderer.invoke('api:server:start', port),
+            stop: () => ipcRenderer.invoke('api:server:stop'),
+            status: () => ipcRenderer.invoke('api:server:status') as Promise<{ running: boolean; port: number }>,
+        },
+    },
 }
 
 contextBridge.exposeInMainWorld('tesserin', tesserinAPI)

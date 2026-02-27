@@ -37,6 +37,12 @@ exports.getCanvas = getCanvas;
 exports.createCanvas = createCanvas;
 exports.updateCanvas = updateCanvas;
 exports.deleteCanvas = deleteCanvas;
+exports.listApiKeys = listApiKeys;
+exports.getApiKey = getApiKey;
+exports.createApiKey = createApiKey;
+exports.revokeApiKey = revokeApiKey;
+exports.deleteApiKey = deleteApiKey;
+exports.touchApiKey = touchApiKey;
 const better_sqlite3_1 = __importDefault(require("better-sqlite3"));
 const electron_1 = require("electron");
 const path_1 = __importDefault(require("path"));
@@ -131,6 +137,18 @@ function initDatabase() {
       files       TEXT DEFAULT '{}',
       created_at  TEXT DEFAULT (datetime('now')),
       updated_at  TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id           TEXT PRIMARY KEY,
+      name         TEXT NOT NULL,
+      key_hash     TEXT NOT NULL,
+      prefix       TEXT NOT NULL,
+      permissions  TEXT NOT NULL DEFAULT '["*"]',
+      created_at   TEXT DEFAULT (datetime('now')),
+      last_used_at TEXT,
+      expires_at   TEXT,
+      is_revoked   INTEGER DEFAULT 0
     );
 
     /* ── Indexes for query patterns ── */
@@ -386,5 +404,25 @@ function updateCanvas(id, data) {
 }
 function deleteCanvas(id) {
     return db.prepare('DELETE FROM canvases WHERE id = ?').run(id);
+}
+// ── API Key Operations ────────────────────────────────────────────────
+function listApiKeys() {
+    return db.prepare('SELECT * FROM api_keys ORDER BY created_at DESC').all();
+}
+function getApiKey(id) {
+    return db.prepare('SELECT * FROM api_keys WHERE id = ?').get(id);
+}
+function createApiKey(data) {
+    db.prepare('INSERT INTO api_keys (id, name, key_hash, prefix, permissions, expires_at) VALUES (?, ?, ?, ?, ?, ?)').run(data.id, data.name, data.keyHash, data.prefix, JSON.stringify(data.permissions), data.expiresAt || null);
+    return db.prepare('SELECT * FROM api_keys WHERE id = ?').get(data.id);
+}
+function revokeApiKey(id) {
+    db.prepare('UPDATE api_keys SET is_revoked = 1 WHERE id = ?').run(id);
+}
+function deleteApiKey(id) {
+    return db.prepare('DELETE FROM api_keys WHERE id = ?').run(id);
+}
+function touchApiKey(id) {
+    db.prepare("UPDATE api_keys SET last_used_at = datetime('now') WHERE id = ?").run(id);
 }
 //# sourceMappingURL=database.js.map

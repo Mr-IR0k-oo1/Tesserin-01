@@ -5,8 +5,18 @@
  * All AI operations run in the Electron main process.
  */
 
+import { getSetting } from './database'
+
 const DEFAULT_ENDPOINT = 'http://localhost:11434'
 const DEFAULT_MODEL = 'llama3.2'
+
+function getEndpoint(): string {
+  try {
+    const configured = getSetting('ai.endpoint')
+    if (configured && configured.trim()) return configured.trim()
+  } catch {}
+  return DEFAULT_ENDPOINT
+}
 
 interface ChatMessage {
     role: string
@@ -26,7 +36,7 @@ export async function chat(
     messages: ChatMessage[],
     model: string = DEFAULT_MODEL
 ): Promise<{ role: string; content: string }> {
-    const response = await fetch(`${DEFAULT_ENDPOINT}/api/chat`, {
+    const response = await fetch(`${getEndpoint()}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -53,7 +63,7 @@ export async function chatStream(
     model: string = DEFAULT_MODEL,
     callbacks: StreamCallbacks
 ): Promise<void> {
-    const response = await fetch(`${DEFAULT_ENDPOINT}/api/chat`, {
+    const response = await fetch(`${getEndpoint()}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

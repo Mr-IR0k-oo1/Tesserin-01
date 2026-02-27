@@ -127,6 +127,64 @@ declare const tesserinAPI: {
         getTools: () => Promise<any>;
         getServerTools: (serverId: string) => Promise<any>;
     };
+    terminal: {
+        spawn: (cwd?: string) => Promise<{
+            id: string;
+            pid: number;
+        }>;
+        write: (id: string, data: string) => void;
+        resize: (id: string, cols: number, rows: number) => void;
+        kill: (id: string) => void;
+        onData: (id: string, callback: (data: string) => void) => () => void;
+        onExit: (id: string, callback: (exitCode: number) => void) => () => void;
+    };
+    fs: {
+        readDir: (dirPath: string) => Promise<Array<{
+            name: string;
+            path: string;
+            isDirectory: boolean;
+        }>>;
+        readFile: (filePath: string) => Promise<string>;
+        writeFile: (filePath: string, content: string) => Promise<any>;
+        stat: (filePath: string) => Promise<{
+            size: number;
+            isDirectory: boolean;
+            isFile: boolean;
+            modified: string;
+        }>;
+        mkdir: (dirPath: string) => Promise<void>;
+        delete: (filePath: string) => Promise<void>;
+    };
+    shell: {
+        exec: (command: string, cwd?: string) => Promise<{
+            stdout: string;
+            stderr: string;
+            exitCode: number;
+        }>;
+    };
+    dialog: {
+        openFolder: () => Promise<string | null>;
+    };
+    api: {
+        keys: {
+            list: () => Promise<any>;
+            create: (data: {
+                name: string;
+                permissions?: string[];
+                expiresAt?: string;
+            }) => Promise<any>;
+            revoke: (id: string) => Promise<any>;
+            delete: (id: string) => Promise<any>;
+        };
+        server: {
+            start: (port?: number) => Promise<any>;
+            stop: () => Promise<any>;
+            status: () => Promise<{
+                running: boolean;
+                port: number;
+            }>;
+        };
+    };
 };
 export type TesserinAPI = typeof tesserinAPI;
 export {};

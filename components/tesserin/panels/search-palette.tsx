@@ -52,10 +52,7 @@ const TAB_ITEMS = [
   { id: "canvas", icon: <FiCompass size={14} />, label: "Canvas", subtitle: "Open whiteboard" },
   { id: "graph", icon: <FiCpu size={14} />, label: "Graph", subtitle: "Knowledge graph view" },
   { id: "code", icon: <FiCode size={14} />, label: "Code", subtitle: "Code editor" },
-  { id: "kanban", icon: <FiGrid size={14} />, label: "Kanban", subtitle: "Task board" },
-  { id: "daily", icon: <FiCalendar size={14} />, label: "Daily Notes", subtitle: "Today's journal" },
   { id: "sam", icon: <HiOutlineSparkles size={14} />, label: "SAM", subtitle: "AI assistant" },
-  { id: "timeline", icon: <FiClock size={14} />, label: "Timeline", subtitle: "Note timeline" },
   { id: "settings", icon: <FiSettings size={14} />, label: "Settings", subtitle: "App preferences" },
 ]
 
@@ -499,8 +496,8 @@ export function SearchPalette({ isOpen, onClose, onSelectNote, onNavigateTab, on
                       data-index={idx}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
                       style={{
-                        backgroundColor: isActive ? "var(--bg-panel-inset)" : "transparent",
-                        color: "var(--text-primary)",
+                        backgroundColor: isActive ? "rgba(255, 255, 255, 0.08)" : "transparent",
+                        color: isActive ? "#ffffff" : "var(--text-primary)",
                       }}
                       onMouseEnter={() => setActiveIndex(idx)}
                       onClick={() => {
@@ -516,13 +513,13 @@ export function SearchPalette({ isOpen, onClose, onSelectNote, onNavigateTab, on
                               ? "var(--accent-primary)"
                               : result.type === "plugin"
                                 ? "rgba(139, 92, 246, 0.15)"
-                                : "var(--bg-panel-inset)",
+                                : isActive ? "rgba(255, 255, 255, 0.1)" : "var(--bg-panel-inset)",
                           color:
                             result.type === "create"
                               ? "var(--text-on-accent)"
                               : result.type === "plugin"
                                 ? "#a78bfa"
-                                : "var(--text-secondary)",
+                                : isActive ? "#ffffff" : "var(--text-secondary)",
                         }}
                       >
                         {result.icon}
@@ -535,7 +532,7 @@ export function SearchPalette({ isOpen, onClose, onSelectNote, onNavigateTab, on
                         {result.subtitle && (
                           <div
                             className="text-xs truncate"
-                            style={{ color: "var(--text-tertiary)" }}
+                            style={{ color: isActive ? "var(--text-secondary)" : "var(--text-tertiary)" }}
                           >
                             {result.subtitle}
                           </div>
@@ -543,16 +540,16 @@ export function SearchPalette({ isOpen, onClose, onSelectNote, onNavigateTab, on
                       </div>
 
                       {result.type === "note" && (
-                        <FiHash size={12} style={{ color: "var(--text-tertiary)", opacity: 0.5 }} />
+                        <FiHash size={12} style={{ color: isActive ? "var(--text-secondary)" : "var(--text-tertiary)", opacity: isActive ? 0.8 : 0.5 }} />
                       )}
                       {result.type === "command" && (
-                        <FiCommand size={12} style={{ color: "var(--text-tertiary)", opacity: 0.5 }} />
+                        <FiCommand size={12} style={{ color: isActive ? "var(--text-secondary)" : "var(--text-tertiary)", opacity: isActive ? 0.8 : 0.5 }} />
                       )}
                       {result.type === "tab" && (
-                        <FiLayout size={12} style={{ color: "var(--text-tertiary)", opacity: 0.5 }} />
+                        <FiLayout size={12} style={{ color: isActive ? "var(--text-secondary)" : "var(--text-tertiary)", opacity: isActive ? 0.8 : 0.5 }} />
                       )}
                       {result.type === "plugin" && (
-                        <FiZap size={12} style={{ color: "#a78bfa", opacity: 0.5 }} />
+                        <FiZap size={12} style={{ color: "#a78bfa", opacity: isActive ? 0.8 : 0.5 }} />
                       )}
                     </button>
                   )

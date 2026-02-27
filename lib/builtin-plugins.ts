@@ -7,6 +7,7 @@
 
 import React from "react"
 import type { TesserinPlugin, TesserinPluginAPI } from "./plugin-system"
+import { WORKSPACE_PLUGINS } from "./workspace-plugins"
 
 /* ================================================================== */
 /*  1. Word Count Plugin                                               */
@@ -163,8 +164,12 @@ export const backlinksPlugin: TesserinPlugin = {
 /*  All built-in plugins                                               */
 /* ================================================================== */
 
+/** Core plugins — always active */
 export const BUILT_IN_PLUGINS: TesserinPlugin[] = [
   wordCountPlugin,
   dailyQuotePlugin,
   backlinksPlugin,
 ]
+
+/** Optional workspace plugins — enabled/disabled by user in Settings → Plugins */
+export { WORKSPACE_PLUGINS } from "./workspace-plugins"

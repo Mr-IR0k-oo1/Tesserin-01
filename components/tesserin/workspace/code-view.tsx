@@ -1,559 +1,602 @@
 "use client"
-import React, { useState, useEffect, useCallback, useRef } from "react"
-import type mermaidAPI from "mermaid"
-
-// Lazy-load mermaid to avoid circular dependency TDZ crash in production build
-let mermaidInstance: typeof mermaidAPI | null = null
-async function getMermaid() {
-  if (!mermaidInstance) {
-    const mod = await import("mermaid")
-    mermaidInstance = mod.default
-  }
-  return mermaidInstance
-}
+import React, { useState, useCallback, useEffect, useRef, lazy, Suspense } from "react"
 import {
-  FiPlay, FiCpu, FiLayout, FiDownload, FiMaximize, FiCode, FiRefreshCw, FiCheck, FiCommand,
-  FiActivity, FiClock, FiDatabase, FiMap, FiPieChart, FiGitCommit, FiUsers, FiList, FiGrid, FiTrendingUp, FiImage
+  FiFolderPlus, FiTerminal, FiMessageSquare, FiCode, FiX, FiChevronUp, FiChevronDown,
+  FiSave, FiMaximize2, FiColumns, FiLayout, FiZap, FiArrowRight,
 } from "react-icons/fi"
 import { HiOutlineSparkles } from "react-icons/hi2"
 import { useTesserinTheme } from "../core/theme-provider"
+import { CodeEditor, detectLanguage } from "./code-editor"
+import { CodeFileTree } from "./code-file-tree"
+import { CodeAIChat, type CodeAIChatHandle } from "./code-ai-chat"
+import { CodeTerminal } from "./code-terminal"
 
-/**
- * CodeView (Agentic Workflow Generator)
- *
- * A tool to generate and visualize agentic workflows using Mermaid.js.
- * Users can describe a process, and AI will generate the corresponding flowchart/graph.
- */
+interface OpenFile {
+  path: string
+  name: string
+  content: string
+  isDirty: boolean
+}
+/** Hook for draggable resize handles */
+function useResize(initial: number, min: number, max: number, direction: "horizontal" | "vertical") {
+  const [size, setSize] = useState(initial)
+  const dragging = useRef(false)
+  const startPos = useRef(0)
+  const startSize = useRef(0)
 
-type DiagramType = "Flowchart" | "Sequence" | "Mindmap" | "Timeline" | "Gantt" | "Class" | "State" | "ER" | "Journey" | "Pie" | "Quadrant" | "Requirement";
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    dragging.current = true
+    startPos.current = direction === "horizontal" ? e.clientX : e.clientY
+    startSize.current = size
 
-interface DiagramDefinition {
-  id: DiagramType
-  label: string
-  icon: React.ElementType
-  sample: string
-  placeholder: string
-  description: string
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!dragging.current) return
+      const delta = direction === "horizontal"
+        ? ev.clientX - startPos.current
+        : startPos.current - ev.clientY // inverted for bottom panels
+      setSize(Math.max(min, Math.min(max, startSize.current + delta)))
+    }
+    const onMouseUp = () => {
+      dragging.current = false
+      document.removeEventListener("mousemove", onMouseMove)
+      document.removeEventListener("mouseup", onMouseUp)
+      document.body.style.cursor = ""
+      document.body.style.userSelect = ""
+    }
+    document.body.style.cursor = direction === "horizontal" ? "col-resize" : "row-resize"
+    document.body.style.userSelect = "none"
+    document.addEventListener("mousemove", onMouseMove)
+    document.addEventListener("mouseup", onMouseUp)
+  }, [size, min, max, direction])
+
+  return { size, onMouseDown }
 }
 
-const DIAGRAM_TYPES: DiagramDefinition[] = [
-  {
-    id: "Flowchart",
-    label: "Flowchart",
-    icon: FiActivity,
-    description: "Process flows & decision trees",
-    placeholder: "E.g. A user logs in, checks permissions, if admin go to dashboard, else go to home...",
-    sample: `graph TD
-    A[Start] --> B{Is Valid?}
-    B -->|Yes| C[Process Data]
-    B -->|No| D[Log Error]
-    C --> E[Save Result]
-    D --> E
-    E --> F[End]`
-  },
-  {
-    id: "Sequence",
-    label: "Sequence",
-    icon: FiList,
-    description: "Interaction between systems",
-    placeholder: "E.g. User sends request to API, API queries DB, DB returns data, API responds to User...",
-    sample: `sequenceDiagram
-    participant U as User
-    participant A as API
-    participant D as Database
-    U->>A: Request Data
-    activate A
-    A->>D: Query
-    activate D
-    D-->>A: Results
-    deactivate D
-    A-->>U: Response
-    deactivate A`
-  },
-  {
-    id: "Mindmap",
-    label: "Mindmap",
-    icon: FiMap,
-    description: "Brainstorming & hierarchy",
-    placeholder: "E.g. Project core ideas, marketing strategy branches, technical requirements...",
-    sample: `mindmap
-  root((Project))
-    Marketing
-      Social Media
-      Email
-    Development
-      Frontend
-      Backend
-    Design
-      UI
-      UX`
-  },
-  {
-    id: "Timeline",
-    label: "Timeline",
-    icon: FiClock,
-    description: "Events over time",
-    placeholder: "E.g. Q1 planning, Q2 development, Q3 testing, Q4 launch...",
-    sample: `timeline
-    title Project Timeline
-    2023 Q1 : Planning
-            : Design
-    2023 Q2 : Development
-            : MVP
-    2023 Q3 : Testing
-    2023 Q4 : Launch`
-  },
-  {
-    id: "Gantt",
-    label: "Gantt",
-    icon: FiGrid,
-    description: "Project schedules",
-    placeholder: "E.g. Task A from 2023-01-01 to 2023-01-10, Task B follows A...",
-    sample: `gantt
-    title Project Schedule
-    dateFormat  YYYY-MM-DD
-    section Design
-    Wireframes :a1, 2023-01-01, 10d
-    section Dev
-    Backend    :after a1, 20d
-    Frontend   :after a1, 15d`
-  },
-  {
-    id: "Class",
-    label: "Class",
-    icon: FiCpu,
-    description: "Object structure (OOP)",
-    placeholder: "E.g. User class has name, email. Post class belongs to User...",
-    sample: `classDiagram
-    class User {
-        +String name
-        +login()
-    }
-    class Post {
-        +String title
-        +publish()
-    }
-    User "1" --> "*" Post : creates`
-  },
-  {
-    id: "State",
-    label: "State",
-    icon: FiRefreshCw,
-    description: "State machine diagrams",
-    placeholder: "E.g. Order starts as New, moves to Processing, then Shipped or Cancelled...",
-    sample: `stateDiagram-v2
-    [*] --> New
-    New --> Processing
-    Processing --> Shipped
-    Processing --> Cancelled
-    Shipped --> [*]`
-  },
-  {
-    id: "ER",
-    label: "ER Diagram",
-    icon: FiDatabase,
-    description: "Entity relationships",
-    placeholder: "E.g. Users have many Posts, Posts have many Comments...",
-    sample: `erDiagram
-    USER ||--o{ POST : places
-    USER {
-        string name
-        string email
-    }
-    POST {
-        string title
-        string body
-    }`
-  },
-  {
-    id: "Journey",
-    label: "User Journey",
-    icon: FiUsers,
-    description: "User experience flow",
-    placeholder: "E.g. User opens app, searches item, adds to cart, pays...",
-    sample: `journey
-    title My working day
-    section Go to work
-      Wake up: 5: Me, Cat
-      Prepare: 3: Me
-    section Work
-      Start work: 5: Me`
-  },
-  {
-    id: "Pie",
-    label: "Pie Chart",
-    icon: FiPieChart,
-    description: "Percentage distribution",
-    placeholder: "E.g. Revenue breakdown: Product A 40%, Product B 30%, Services 30%...",
-    sample: `pie title Revenue
-    "Product A" : 40
-    "Product B" : 30
-    "Services" : 30`
-  },
-  {
-    id: "Quadrant",
-    label: "Quadrant",
-    icon: FiLayout,
-    description: "2x2 Matrix",
-    placeholder: "E.g. Impact vs Effort matrix. High Impact/Low Effort...",
-    sample: `quadrantChart
-    x-axis Low Effort --> High Effort
-    y-axis Low Impact --> High Impact
-    quadrant-1 Quick Wins
-    quadrant-2 Major Projects
-    quadrant-3 Fill-ins
-    quadrant-4 Thankless Tasks
-    Item A: [0.3, 0.6]
-    Item B: [0.45, 0.23]`
-  },
-  {
-    id: "Requirement",
-    label: "Requirement",
-    icon: FiCheck,
-    description: "SysML Requirements",
-    placeholder: "E.g. Requirement 1: System must be fast. Risk: High...",
-    sample: `requirementDiagram
-    requirement test_req {
-    id: 1
-    text: the test requirement
-    risk: high
-    verifymethod: test
-    }`
-  }
-]
+/** Right-side resize (for AI chat width, dragged from left edge) */
+function useResizeRight(initial: number, min: number, max: number) {
+  const [size, setSize] = useState(initial)
+  const dragging = useRef(false)
+  const startPos = useRef(0)
+  const startSize = useRef(0)
 
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    dragging.current = true
+    startPos.current = e.clientX
+    startSize.current = size
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!dragging.current) return
+      const delta = startPos.current - ev.clientX // inverted: drag left = grow
+      setSize(Math.max(min, Math.min(max, startSize.current + delta)))
+    }
+    const onMouseUp = () => {
+      dragging.current = false
+      document.removeEventListener("mousemove", onMouseMove)
+      document.removeEventListener("mouseup", onMouseUp)
+      document.body.style.cursor = ""
+      document.body.style.userSelect = ""
+    }
+    document.body.style.cursor = "col-resize"
+    document.body.style.userSelect = "none"
+    document.addEventListener("mousemove", onMouseMove)
+    document.addEventListener("mouseup", onMouseUp)
+  }, [size, min, max])
+
+  return { size, onMouseDown }
+}
 export function CodeView() {
-  const [selectedType, setSelectedType] = useState<DiagramType>("Flowchart")
-  const [input, setInput] = useState("")
-  const [code, setCode] = useState(DIAGRAM_TYPES[0].sample)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [scale, setScale] = useState(1)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  // Current definition
-  const activeDef = DIAGRAM_TYPES.find(d => d.id === selectedType) || DIAGRAM_TYPES[0]
-
   const { isDark } = useTesserinTheme()
 
-  // Initialize mermaid or update theme
-  useEffect(() => {
-    getMermaid().then((m) => {
-      m.initialize({
-        startOnLoad: true,
-        theme: 'base',
-        themeVariables: {
-          primaryColor: '#eab308', // accent-primary (yellow)
-          primaryTextColor: isDark ? '#ededed' : '#1a1c20',
-          primaryBorderColor: '#ca8a04',
-          lineColor: isDark ? '#888888' : '#94a3b8',
-          secondaryColor: '#f59e0b',
-          tertiaryColor: isDark ? '#111111' : '#fff',
-          mainBkg: isDark ? '#050505' : '#ffffff', // Match --bg-app (Obsidian)
-          nodeBorder: '#eab308',
-        },
-        securityLevel: 'loose',
-        fontFamily: 'inherit'
-      })
+  // Layout state
+  const [showSidebar, setShowSidebar] = useState(true)
+  const [showTerminal, setShowTerminal] = useState(false)
+  const [showAIChat, setShowAIChat] = useState(true)
+  const sidebar = useResize(220, 140, 400, "horizontal")
+  const terminal = useResize(220, 100, 500, "vertical")
+  const aiChat = useResizeRight(340, 240, 600)
 
-      // Force re-render when theme changes
-      setCode(prev => prev + " ")
-      setTimeout(() => setCode(prev => prev.trim()), 10)
-    })
-  }, [isDark])
+  // Project state
+  const [projectPath, setProjectPath] = useState<string | null>(null)
+  const [projectName, setProjectName] = useState("")
 
-  // Render diagram
-  useEffect(() => {
-    const render = async () => {
-      if (!containerRef.current) return
-      try {
-        // Check connectivity / validity implies re-rendering
-        // We use a unique ID each time to force full re-render
-        containerRef.current.innerHTML = ''
-        const id = `mermaid-${Date.now()}`
+  // Builder prompt state
+  const [buildPrompt, setBuildPrompt] = useState("")
+  const [isBuilding, setIsBuilding] = useState(false)
+  const aiChatRef = useRef<CodeAIChatHandle>(null)
 
-        try {
-          const m = await getMermaid()
-          const { svg } = await m.render(id, code)
-          containerRef.current.innerHTML = svg
-          setError(null)
-        } catch (renderError) {
-          console.error("Mermaid Render Error", renderError)
-          // If parsing fails, mermaid often leaves garbage or throws
-          // We attempt to catch it, but mermaid API behaviors vary
-          setError("Graphic syntax error: " + (renderError instanceof Error ? renderError.message : String(renderError)))
-        }
-      } catch (err) {
-        console.error("Mermaid system error:", err)
-      }
+  // File state
+  const [openFiles, setOpenFiles] = useState<OpenFile[]>([])
+  const [activeFileIndex, setActiveFileIndex] = useState(-1)
+  const activeFile = activeFileIndex >= 0 ? openFiles[activeFileIndex] : null
+
+  const openFolder = useCallback(async () => {
+    const api = window.tesserin
+    if (!api?.dialog) return
+    const folder = await api.dialog.openFolder()
+    if (folder) {
+      setProjectPath(folder)
+      setProjectName(folder.split("/").pop() || folder.split("\\").pop() || folder)
+      setOpenFiles([])
+      setActiveFileIndex(-1)
     }
+  }, [])
 
-    const timeout = setTimeout(render, 600) // Debounce
-    return () => clearTimeout(timeout)
-  }, [code])
-
-  // Switch diagram type
-  const handleTypeSelect = (type: DiagramType) => {
-    setSelectedType(type)
-    const def = DIAGRAM_TYPES.find(d => d.id === type)
-    if (def) {
-      setCode(def.sample)
-      // Optional: Keep input or clear it? Let's keep it to allow "switch type" on same prompt, 
-      // though prompts are usually specific.
-    }
-  }
-
-  const generateWorkflow = async () => {
-    if (!input.trim() || isGenerating) return
-
-    setIsGenerating(true)
-    setError(null)
-
-    try {
-      const endpoint = "http://localhost:11434/api/generate"
-      const prompt = `Convert the following description into a Mermaid.js ${activeDef.label} (${activeDef.id}) diagram. 
-            Return ONLY the mermaid code block. No markdown, no explanation.
-            
-            Key: Use valid ${activeDef.id} syntax.
-            Description: ${input}`
-
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "llama3.2", // Default model
-          prompt: prompt,
-          stream: false
-        })
-      })
-
-      if (!res.ok) throw new Error("Ollama not reachable")
-
-      const data = await res.json()
-      const generated = data.response.replace(/```mermaid/g, "").replace(/```/g, "").trim()
-      setCode(generated)
-    } catch (err) {
-      console.warn("AI generation failed, using mock", err)
-      // Mock based on type
-      setCode(activeDef.sample + "\n%% AI generation failed, showing sample")
-      setError(err instanceof Error ? err.message + " (using sample)" : "AI unavailable (using sample)")
-    } finally {
-      setIsGenerating(false)
-    }
-  }
-
-  const downloadSVG = () => {
-    if (!containerRef.current) return
-    const svg = containerRef.current.querySelector("svg")
-    if (!svg) return
-
-    const svgData = new XMLSerializer().serializeToString(svg)
-    const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" })
-    const url = URL.createObjectURL(blob)
-
-    const link = document.createElement("a")
-    link.href = url
-    link.download = `${activeDef.id.toLowerCase()}-${Date.now()}.svg`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
-  const downloadPNG = () => {
-    if (!containerRef.current) return
-    const svg = containerRef.current.querySelector("svg")
-    if (!svg) {
-      alert("No diagram to export")
+  const openFile = useCallback(async (filePath: string) => {
+    // Check if already open
+    const idx = openFiles.findIndex(f => f.path === filePath)
+    if (idx >= 0) {
+      setActiveFileIndex(idx)
       return
     }
 
-    const svgData = new XMLSerializer().serializeToString(svg)
-    const canvas = document.createElement("canvas")
-    const ctx = canvas.getContext("2d")
-    const img = new Image()
+    const api = window.tesserin
+    if (!api?.fs) return
 
-    // Get dimensions from SVG or container
-    const viewBox = svg.getAttribute("viewBox")?.split(" ").map(Number)
-    const svgWidth = viewBox ? viewBox[2] : parseInt(svg.getAttribute("width") || "800")
-    const svgHeight = viewBox ? viewBox[3] : parseInt(svg.getAttribute("height") || "600")
+    try {
+      const content = await api.fs.readFile(filePath)
+      const name = filePath.split("/").pop() || filePath.split("\\").pop() || filePath
+      const newFile: OpenFile = { path: filePath, name, content, isDirty: false }
+      setOpenFiles(prev => [...prev, newFile])
+      setActiveFileIndex(openFiles.length)
+    } catch (err) {
+      console.error("Failed to read file:", err)
+    }
+  }, [openFiles])
 
-    // High res export
-    const scale = 2
-    canvas.width = svgWidth * scale
-    canvas.height = svgHeight * scale
+  const closeFile = useCallback((index: number) => {
+    setOpenFiles(prev => {
+      const next = prev.filter((_, i) => i !== index)
+      if (next.length === 0) {
+        setActiveFileIndex(-1)
+      } else {
+        setActiveFileIndex(prevActive => {
+          if (prevActive === index) return Math.min(index, next.length - 1)
+          if (prevActive > index) return prevActive - 1
+          return prevActive
+        })
+      }
+      return next
+    })
+  }, [])
 
-    img.onload = () => {
-      if (ctx) {
-        // Match theme background
-        ctx.fillStyle = isDark ? "#050505" : "#ffffff"
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
+  const updateFileContent = useCallback((content: string) => {
+    if (activeFileIndex < 0) return
+    setOpenFiles(prev => prev.map((f, i) =>
+      i === activeFileIndex ? { ...f, content, isDirty: true } : f
+    ))
+  }, [activeFileIndex])
 
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-        const pngUrl = canvas.toDataURL("image/png")
+  const saveFile = useCallback(async (content: string) => {
+    if (activeFileIndex < 0) return
+    const file = openFiles[activeFileIndex]
+    const api = window.tesserin
+    if (!api?.fs) return
 
-        const link = document.createElement("a")
-        link.href = pngUrl
-        link.download = `${activeDef.id.toLowerCase()}-${Date.now()}.png`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
+    try {
+      await api.fs.writeFile(file.path, content)
+      setOpenFiles(prev => prev.map((f, i) =>
+        i === activeFileIndex ? { ...f, content, isDirty: false } : f
+      ))
+    } catch (err) {
+      console.error("Failed to save file:", err)
+    }
+  }, [activeFileIndex, openFiles])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+` or Cmd+` to toggle terminal
+      if ((e.ctrlKey || e.metaKey) && e.key === "`") {
+        e.preventDefault()
+        setShowTerminal(prev => !prev)
+      }
+      // Ctrl+B or Cmd+B to toggle sidebar
+      if ((e.ctrlKey || e.metaKey) && e.key === "b") {
+        e.preventDefault()
+        setShowSidebar(prev => !prev)
       }
     }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
 
-    // Handle unicode
-    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)))
-  }
+  // Build from prompt — creates a project dir and sends the prompt to AI
+  const startBuild = useCallback(async (prompt: string) => {
+    if (!prompt.trim()) return
+    const api = window.tesserin
+    if (!api?.fs || !api?.shell) return
+
+    setIsBuilding(true)
+
+    // Derive a project name from the prompt
+    const slug = prompt.trim().toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .split(/\s+/).slice(0, 4).join("-")
+      .slice(0, 40) || "new-project"
+    const homeDir = await api.shell.exec("echo $HOME").then(r => r.stdout.trim())
+    const projDir = `${homeDir}/Desktop/${slug}`
+
+    try {
+      await api.fs.mkdir(projDir)
+    } catch { /* may already exist */ }
+
+    setProjectPath(projDir)
+    setProjectName(slug)
+    setShowAIChat(true)
+    setShowSidebar(true)
+    setBuildPrompt("")
+
+    // Use requestAnimationFrame to ensure state has propagated before sending
+    requestAnimationFrame(() => {
+      aiChatRef.current?.sendBuildPrompt(prompt, projDir)
+      setIsBuilding(false)
+    })
+  }, [])
+
+  // Called by AI chat when it creates files — auto-sets project if not set
+  const handleProjectCreated = useCallback((dirPath: string) => {
+    if (!projectPath) {
+      setProjectPath(dirPath)
+      setProjectName(dirPath.split("/").pop() || dirPath)
+      setShowSidebar(true)
+    }
+  }, [projectPath])
 
   return (
-    <div className="w-full h-full flex flex-col bg-[var(--bg-app)]">
-      {/* Toolbar */}
+    <div className="w-full h-full flex flex-col" style={{ background: "var(--bg-app)" }}>
+      {/* ── Toolbar ─────────────────────────────────────────────── */}
       <div
-        className="h-14 border-b flex items-center px-4 justify-between shrink-0"
+        className="h-10 border-b flex items-center px-3 gap-2 shrink-0"
         style={{ borderColor: "var(--border-dark)", background: "var(--bg-panel)" }}
       >
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center skeuo-btn">
-            <FiCpu size={18} className="text-amber-500" />
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
+            <FiCode size={13} className="text-white" />
           </div>
           <div>
-            <h2 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>Agentic Flow Generator</h2>
-            <div className="text-[10px] opacity-60">Powered by Mermaid.js & AI</div>
+            <span className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>
+              {projectName || "Code"}
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex-1" />
+
+        <div className="flex items-center gap-1">
           <button
-            onClick={downloadSVG}
-            className="skeuo-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 hover:brightness-110 active:scale-95 transition-all"
-            title="Download SVG"
+            onClick={openFolder}
+            className="skeuo-btn h-7 px-2.5 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 hover:brightness-110 active:scale-95 transition-all"
             style={{ color: "var(--text-secondary)" }}
+            title="Open Folder"
           >
-            <FiCode /> SVG
-          </button>
-          <button
-            onClick={downloadPNG}
-            className="skeuo-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 hover:brightness-110 active:scale-95 transition-all"
-            title="Download PNG"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            <FiImage /> PNG
+            <FiFolderPlus size={13} />
+            Open Folder
           </button>
 
-          <div className="w-px h-6 bg-[var(--border-dark)] mx-2" />
+          <div className="w-px h-5 mx-1" style={{ background: "var(--border-dark)" }} />
 
           <button
-            onClick={() => setScale(s => Math.max(0.5, s - 0.1))}
-            className="skeuo-btn w-8 h-8 flex items-center justify-center rounded-lg"
-          >-</button>
-          <span className="text-xs font-mono w-12 text-center">{Math.round(scale * 100)}%</span>
+            onClick={() => setShowSidebar(!showSidebar)}
+            className={`skeuo-btn w-7 h-7 rounded-lg flex items-center justify-center transition-all ${showSidebar ? 'brightness-110' : ''}`}
+            style={{ color: showSidebar ? "var(--accent-primary)" : "var(--text-muted)" }}
+            title="Toggle Explorer"
+          >
+            <FiColumns size={13} />
+          </button>
           <button
-            onClick={() => setScale(s => Math.min(2, s + 0.1))}
-            className="skeuo-btn w-8 h-8 flex items-center justify-center rounded-lg"
-          >+</button>
+            onClick={() => setShowTerminal(!showTerminal)}
+            className={`skeuo-btn w-7 h-7 rounded-lg flex items-center justify-center transition-all ${showTerminal ? 'brightness-110' : ''}`}
+            style={{ color: showTerminal ? "var(--accent-primary)" : "var(--text-muted)" }}
+            title="Toggle Terminal"
+          >
+            <FiTerminal size={13} />
+          </button>
+          <button
+            onClick={() => setShowAIChat(!showAIChat)}
+            className={`skeuo-btn w-7 h-7 rounded-lg flex items-center justify-center transition-all ${showAIChat ? 'brightness-110' : ''}`}
+            style={{ color: showAIChat ? "var(--accent-primary)" : "var(--text-muted)" }}
+            title="Toggle AI Chat"
+          >
+            <HiOutlineSparkles size={13} />
+          </button>
         </div>
       </div>
 
+      {/* ── Main Content ────────────────────────────────────────── */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Editor Pane (Left) */}
-        <div className="w-[400px] border-r flex flex-col" style={{ borderColor: "var(--border-dark)", background: "var(--bg-panel)" }}>
-          <div className="p-4 flex-1 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
 
-            {/* Diagram Type Selector */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
-                <FiGrid />
-                Diagram Type
-              </label>
-              <div className="grid grid-cols-4 gap-2">
-                {DIAGRAM_TYPES.map(type => (
-                  <button
-                    key={type.id}
-                    onClick={() => handleTypeSelect(type.id)}
-                    className={`flex flex-col items-center justify-center gap-1 p-2 rounded-xl transition-all duration-200 ${selectedType === type.id ? 'active' : ''}`}
-                    style={{
-                      backgroundColor: selectedType === type.id ? "var(--accent-primary)" : "var(--bg-panel-inset)",
-                      color: selectedType === type.id ? "var(--text-on-accent)" : "var(--text-secondary)",
-                      boxShadow: selectedType === type.id ? "inset 0 1px 3px rgba(0,0,0,0.2)" : "var(--shadow-sm)",
-                      border: selectedType === type.id ? "1px solid rgba(0,0,0,0.1)" : "1px solid transparent"
-                    }}
-                    title={type.description}
-                  >
-                    <type.icon size={16} />
-                    <span className="text-[9px] font-medium truncate w-full text-center">{type.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Prompt Input */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
-                <HiOutlineSparkles className="text-amber-500" />
-                Description
-              </label>
-              <textarea
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                placeholder={activeDef.placeholder}
-                className="w-full h-24 skeuo-inset p-3 text-sm rounded-xl resize-none focus:outline-none transition-all focus:ring-1 focus:ring-amber-500/50"
-                style={{ color: "var(--text-primary)" }}
-              />
-              <button
-                onClick={generateWorkflow}
-                disabled={isGenerating || !input.trim()}
-                className="w-full skeuo-btn py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 text-white transition-all hover:brightness-110 active:scale-95"
-                style={{
-                  background: isGenerating
-                    ? "var(--bg-panel-inset)"
-                    : "linear-gradient(135deg, #f59e0b, #d97706)", // Yellow/Amber gradient
-                  opacity: isGenerating ? 0.7 : 1,
-                  textShadow: "0 1px 1px rgba(0,0,0,0.2)"
-                }}
-              >
-                {isGenerating ? <FiRefreshCw className="animate-spin" /> : <FiPlay />}
-                {isGenerating ? "Generating..." : `Generate ${activeDef.label}`}
-              </button>
-            </div>
-
-            {/* Code Editor */}
-            <div className="flex-1 flex flex-col gap-2 min-h-[200px]">
-              <label className="text-xs font-semibold flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
-                <FiCode />
-                Source
-              </label>
-              <textarea
-                value={code}
-                onChange={e => setCode(e.target.value)}
-                className="flex-1 w-full skeuo-inset p-3 text-xs font-mono leading-relaxed rounded-xl resize-none focus:outline-none"
-                style={{ color: "var(--text-primary)", whiteSpace: "pre" }}
-                spellCheck={false}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Preview Pane (Right) */}
-        <div className="flex-1 bg-[var(--bg-app)] relative overflow-hidden flex items-center justify-center">
-          <div
-            className="w-full h-full overflow-auto flex items-center justify-center p-8 custom-scrollbar"
-            style={{
-              backgroundImage: "radial-gradient(var(--border-dark) 1px, transparent 1px)",
-              backgroundSize: "20px 20px"
-            }}
-          >
+        {/* File Explorer Sidebar */}
+        {showSidebar && (
+          <div className="flex shrink-0">
             <div
-              ref={containerRef}
-              className="transition-transform duration-200 origin-center"
-              style={{ transform: `scale(${scale})` }}
+              className="border-r overflow-hidden"
+              style={{ width: sidebar.size, borderColor: "var(--border-dark)" }}
+            >
+              {projectPath ? (
+                <CodeFileTree
+                  rootPath={projectPath}
+                  onFileSelect={openFile}
+                  activeFile={activeFile?.path}
+                />
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center gap-3 p-4">
+                  <FiFolderPlus size={24} style={{ color: "var(--text-muted)", opacity: 0.3 }} />
+                  <p className="text-[11px] text-center opacity-40" style={{ color: "var(--text-muted)" }}>
+                    Open a folder to browse files
+                  </p>
+                  <button
+                    onClick={openFolder}
+                    className="skeuo-btn px-3 py-1.5 rounded-lg text-[11px] font-semibold hover:brightness-110 active:scale-95 transition-all"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    Open Folder
+                  </button>
+                </div>
+              )}
+            </div>
+            {/* Sidebar resize handle */}
+            <div
+              className="w-1 cursor-col-resize hover:bg-amber-500/30 active:bg-amber-500/50 transition-colors"
+              onMouseDown={sidebar.onMouseDown}
             />
           </div>
+        )}
 
-          {error && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-medium backdrop-blur-md flex items-center gap-3 shadow-lg animate-in slide-in-from-bottom-2">
-              <FiLayout size={16} />
-              <span>{error}</span>
+        {/* Center: Editor + Terminal */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+          {/* Tab Bar */}
+          {openFiles.length > 0 && (
+            <div
+              className="h-8 border-b flex items-center shrink-0 overflow-x-auto custom-scrollbar"
+              style={{ borderColor: "var(--border-dark)", background: "var(--bg-panel)" }}
+            >
+              {openFiles.map((file, i) => (
+                <div
+                  key={file.path}
+                  className={`flex items-center gap-1.5 h-full px-3 text-[11px] border-r cursor-pointer transition-colors group shrink-0 ${
+                    i === activeFileIndex ? "" : "hover:bg-[var(--bg-panel-inset)]"
+                  }`}
+                  style={{
+                    borderColor: "var(--border-dark)",
+                    background: i === activeFileIndex ? "var(--bg-app)" : undefined,
+                    color: i === activeFileIndex ? "var(--text-primary)" : "var(--text-muted)",
+                    borderBottom: i === activeFileIndex ? "2px solid var(--accent-primary)" : "2px solid transparent",
+                  }}
+                  onClick={() => setActiveFileIndex(i)}
+                >
+                  <span className="truncate max-w-[120px]">
+                    {file.isDirty && <span className="text-amber-500 mr-0.5">●</span>}
+                    {file.name}
+                  </span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); closeFile(i) }}
+                    className="opacity-0 group-hover:opacity-100 hover:bg-[var(--bg-panel-inset)] rounded p-0.5 transition-all"
+                  >
+                    <FiX size={10} />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
+
+          {/* Editor Area */}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {activeFile ? (
+              <CodeEditor
+                content={activeFile.content}
+                filename={activeFile.name}
+                isDark={isDark}
+                onChange={updateFileContent}
+                onSave={saveFile}
+              />
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center gap-6 p-8" style={{ background: "var(--bg-app)" }}>
+                {/* Logo + title */}
+                <div className="flex flex-col items-center gap-3">
+                  <div
+                    className="w-16 h-16 rounded-2xl flex items-center justify-center"
+                    style={{
+                      background: "linear-gradient(135deg, #f59e0b22, #d9770622)",
+                      border: "1px solid var(--border-dark)",
+                    }}
+                  >
+                    <FiZap size={28} className="text-amber-500" />
+                  </div>
+                  <div className="text-center space-y-1">
+                    <p className="text-base font-bold" style={{ color: "var(--text-primary)" }}>
+                      What do you want to build?
+                    </p>
+                    <p className="text-[11px] max-w-[340px]" style={{ color: "var(--text-muted)", opacity: 0.6 }}>
+                      Describe your project and the AI agent will scaffold it — create files, install dependencies, and set everything up.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Builder prompt input */}
+                <div className="w-full max-w-lg">
+                  <div
+                    className="rounded-2xl overflow-hidden"
+                    style={{
+                      background: "var(--bg-panel)",
+                      border: "1px solid var(--border-mid)",
+                      boxShadow: "var(--shadow-md)",
+                    }}
+                  >
+                    <textarea
+                      value={buildPrompt}
+                      onChange={e => setBuildPrompt(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault()
+                          startBuild(buildPrompt)
+                        }
+                      }}
+                      placeholder="e.g. Build a React todo app with TypeScript and Tailwind CSS..."
+                      rows={3}
+                      disabled={isBuilding}
+                      className="w-full resize-none text-sm bg-transparent outline-none px-4 pt-4 pb-2 disabled:opacity-50"
+                      style={{ color: "var(--text-primary)" }}
+                    />
+                    <div className="flex items-center justify-between px-4 pb-3">
+                      <span className="text-[10px]" style={{ color: "var(--text-muted)", opacity: 0.4 }}>
+                        Press Enter to build
+                      </span>
+                      <button
+                        onClick={() => startBuild(buildPrompt)}
+                        disabled={!buildPrompt.trim() || isBuilding}
+                        className="px-4 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all hover:brightness-110 active:scale-95 disabled:opacity-40"
+                        style={{
+                          background: buildPrompt.trim() ? "linear-gradient(135deg, #f59e0b, #d97706)" : "var(--bg-panel-inset)",
+                          color: buildPrompt.trim() ? "#fff" : "var(--text-muted)",
+                        }}
+                      >
+                        {isBuilding ? (
+                          <>
+                            <FiZap size={12} className="animate-pulse" /> Building...
+                          </>
+                        ) : (
+                          <>
+                            <FiZap size={12} /> Build
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Quick templates */}
+                  <div className="flex flex-wrap items-center gap-2 mt-4 justify-center">
+                    {[
+                      "React + TypeScript app",
+                      "Next.js landing page",
+                      "Express REST API",
+                      "Python Flask app",
+                      "Static HTML site",
+                    ].map(tpl => (
+                      <button
+                        key={tpl}
+                        onClick={() => setBuildPrompt(`Build a ${tpl}`)}
+                        className="px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all hover:brightness-110 active:scale-95"
+                        style={{
+                          background: "var(--bg-panel-inset)",
+                          color: "var(--text-secondary)",
+                          border: "1px solid var(--border-dark)",
+                        }}
+                      >
+                        {tpl}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Divider + open folder option */}
+                <div className="flex items-center gap-3 mt-2">
+                  <div className="h-px w-16" style={{ background: "var(--border-dark)" }} />
+                  <span className="text-[10px]" style={{ color: "var(--text-muted)", opacity: 0.4 }}>or</span>
+                  <div className="h-px w-16" style={{ background: "var(--border-dark)" }} />
+                </div>
+                <button
+                  onClick={openFolder}
+                  className="skeuo-btn px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 hover:brightness-110 active:scale-95 transition-all"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  <FiFolderPlus size={14} />
+                  Open Existing Folder
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Terminal Panel */}
+          {showTerminal && (
+            <div
+              className="border-t shrink-0 overflow-hidden"
+              style={{ height: terminal.size, borderColor: "var(--border-dark)" }}
+            >
+              {/* Terminal resize handle */}
+              <div
+                className="h-1 cursor-row-resize hover:bg-amber-500/30 active:bg-amber-500/50 transition-colors"
+                onMouseDown={terminal.onMouseDown}
+              />
+              <div
+                className="h-7 border-b flex items-center px-3 justify-between shrink-0"
+                style={{ borderColor: "var(--border-dark)", background: "var(--bg-panel)" }}
+              >
+                <div className="flex items-center gap-2">
+                  <FiTerminal size={11} className="text-amber-500" />
+                  <span className="text-[10px] font-semibold" style={{ color: "var(--text-secondary)" }}>
+                    Terminal
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowTerminal(false)}
+                  className="opacity-40 hover:opacity-100 transition-opacity"
+                >
+                  <FiX size={12} style={{ color: "var(--text-muted)" }} />
+                </button>
+              </div>
+              <div style={{ height: terminal.size - 32 }}>
+                <CodeTerminal cwd={projectPath || undefined} isDark={isDark} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* AI Chat Panel */}
+        {showAIChat && (
+          <div className="flex shrink-0">
+            {/* AI Chat resize handle */}
+            <div
+              className="w-1 cursor-col-resize hover:bg-amber-500/30 active:bg-amber-500/50 transition-colors"
+              onMouseDown={aiChat.onMouseDown}
+            />
+            <div
+              className="border-l overflow-hidden"
+              style={{ width: aiChat.size, borderColor: "var(--border-dark)" }}
+            >
+              <CodeAIChat
+                ref={aiChatRef}
+                isDark={isDark}
+                currentFile={activeFile ? { name: activeFile.name, content: activeFile.content } : undefined}
+                projectPath={projectPath || undefined}
+                onOpenFile={openFile}
+                onProjectCreated={handleProjectCreated}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Status Bar ──────────────────────────────────────────── */}
+      <div
+        className="h-6 border-t flex items-center px-3 justify-between shrink-0"
+        style={{
+          borderColor: "var(--border-dark)",
+          background: "var(--bg-panel)",
+        }}
+      >
+        <div className="flex items-center gap-3">
+          {activeFile && (
+            <>
+              <span className="text-[10px] font-mono" style={{ color: "var(--accent-primary)" }}>
+                {detectLanguage(activeFile.name).toUpperCase()}
+              </span>
+              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                {activeFile.name}
+              </span>
+            </>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          {activeFile?.isDirty && (
+            <span className="text-[10px] text-amber-500 font-medium">Modified</span>
+          )}
+          <span className="text-[10px] flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
+            <HiOutlineSparkles size={10} className="text-amber-500" />
+            AI + Notes
+          </span>
         </div>
       </div>
     </div>

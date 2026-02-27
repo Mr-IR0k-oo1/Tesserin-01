@@ -13,13 +13,23 @@ exports.generateTags = generateTags;
 exports.suggestLinks = suggestLinks;
 exports.checkConnection = checkConnection;
 exports.listModels = listModels;
+const database_1 = require("./database");
 const DEFAULT_ENDPOINT = 'http://localhost:11434';
 const DEFAULT_MODEL = 'llama3.2';
+function getEndpoint() {
+    try {
+        const configured = (0, database_1.getSetting)('ai.endpoint');
+        if (configured && configured.trim())
+            return configured.trim();
+    }
+    catch { }
+    return DEFAULT_ENDPOINT;
+}
 /**
  * Send a non-streaming chat request to Ollama.
  */
 async function chat(messages, model = DEFAULT_MODEL) {
-    const response = await fetch(`${DEFAULT_ENDPOINT}/api/chat`, {
+    const response = await fetch(`${getEndpoint()}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -39,7 +49,7 @@ async function chat(messages, model = DEFAULT_MODEL) {
  * Calls onChunk for each token, onDone when complete.
  */
 async function chatStream(messages, model = DEFAULT_MODEL, callbacks) {
-    const response = await fetch(`${DEFAULT_ENDPOINT}/api/chat`, {
+    const response = await fetch(`${getEndpoint()}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

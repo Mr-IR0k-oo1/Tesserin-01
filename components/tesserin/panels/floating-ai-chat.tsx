@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react"
 import { FiSend, FiWifi, FiWifiOff, FiLoader, FiPlus, FiCopy, FiCheck, FiX, FiChevronDown, FiAlertTriangle, FiFileText } from "react-icons/fi"
 import { HiOutlineSparkles, HiOutlineCpuChip } from "react-icons/hi2"
 import { useNotes } from "@/lib/notes-store"
+import { getOllamaEndpoint } from "@/lib/ollama-config"
 
 /**
  * FloatingAIChat
@@ -12,8 +13,6 @@ import { useNotes } from "@/lib/notes-store"
  * Positioned in the bottom-right corner of the viewport.
  * Supports Ollama streaming (direct HTTP) and insert-to-note.
  */
-
-const OLLAMA_ENDPOINT = "http://localhost:11434"
 
 interface ChatMessage {
     role: "user" | "assistant" | "system"
@@ -76,12 +75,12 @@ export function FloatingAIChat() {
 
         // Direct HTTP to Ollama
         try {
-            const res = await fetch(`${OLLAMA_ENDPOINT}/api/version`, {
+            const res = await fetch(`${getOllamaEndpoint()}/api/version`, {
                 signal: AbortSignal.timeout(3000),
             })
             if (res.ok) {
                 setIsConnected(true)
-                const tagRes = await fetch(`${OLLAMA_ENDPOINT}/api/tags`)
+                const tagRes = await fetch(`${getOllamaEndpoint()}/api/tags`)
                 if (tagRes.ok) {
                     const data = (await tagRes.json()) as { models?: Array<{ name: string }> }
                     const models = (data.models || []).map((m: { name: string }) => m.name)
@@ -129,7 +128,7 @@ export function FloatingAIChat() {
             abortRef.current = controller
 
             try {
-                const res = await fetch(`${OLLAMA_ENDPOINT}/api/chat`, {
+                const res = await fetch(`${getOllamaEndpoint()}/api/chat`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -274,7 +273,7 @@ export function FloatingAIChat() {
                 }}
                 aria-label="Open AI Assistant"
             >
-                <HiOutlineSparkles size={24} className="text-gray-900" />
+                <HiOutlineSparkles size={24} style={{ color: "var(--text-on-accent)" }} />
             </button>
         )
     }
@@ -304,7 +303,7 @@ export function FloatingAIChat() {
                         className="w-8 h-8 rounded-lg flex items-center justify-center"
                         style={{ background: "linear-gradient(135deg, #facc15, #f59e0b)" }}
                     >
-                        <HiOutlineSparkles size={16} className="text-gray-900" />
+                        <HiOutlineSparkles size={16} style={{ color: "var(--text-on-accent)" }} />
                     </div>
                     <div>
                         <div className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>

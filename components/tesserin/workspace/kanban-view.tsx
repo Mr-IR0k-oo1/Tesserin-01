@@ -290,7 +290,7 @@ export function KanbanView() {
                                         setAddingToColumn(column.id)
                                         setNewTaskTitle("")
                                     }}
-                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-colors hover:bg-white/5"
+                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-colors hover:bg-white/10"
                                     style={{ color: "var(--text-tertiary)" }}
                                 >
                                     <FiPlus size={14} />

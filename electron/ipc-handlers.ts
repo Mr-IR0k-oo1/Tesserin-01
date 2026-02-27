@@ -1,7 +1,128 @@
-import { ipcMain } from 'electron'
+import { ipcMain, dialog, BrowserWindow } from 'electron'
 import * as db from './database'
 import * as ai from './ai-service'
 import { mcpClientManager, type McpServerConfig } from './mcp-client'
+import { generateApiKey, startApiServer, stopApiServer, getApiServerStatus } from './api-server'
+import * as pty from 'node-pty'
+import * as fs from 'fs'
+import * as path from 'path'
+import * as os from 'os'
+import { execFile } from 'child_process'
+import { randomUUID } from 'crypto'
+
+/* ================================================================== */
+/*  Input validation helpers                                           */
+/* ================================================================== */
+
+/** Validates a string parameter. Returns the trimmed string or throws. */
+function requireString(value: unknown, name: string): string {
+    if (typeof value !== 'string' || value.trim().length === 0) {
+        throw new Error(`Invalid parameter "${name}": expected non-empty string`)
+    }
+    return value.trim()
+}
+
+/** Validates an optional string parameter. */
+function optionalString(value: unknown, name: string): string | undefined {
+    if (value === undefined || value === null) return undefined
+    return requireString(value, name)
+}
+
+/**
+ * Validates a filesystem path:
+ * 1. Must be a non-empty string
+ * 2. Must be absolute
+ * 3. Must not contain null bytes
+ * 4. Resolved path must not escape via .. traversal to unexpected roots
+ */
+function validatePath(value: unknown, name: string): string {
+    const raw = requireString(value, name)
+    if (raw.includes('\0')) {
+        throw new Error(`Invalid path "${name}": contains null bytes`)
+    }
+    const resolved = path.resolve(raw)
+    if (!path.isAbsolute(resolved)) {
+        throw new Error(`Invalid path "${name}": must be absolute`)
+    }
+    return resolved
+}
+
+/** Validates that a value looks like a UUID / nanoid (alphanumeric + dashes). */
+const ID_RE = /^[a-zA-Z0-9_-]{1,64}$/
+function validateId(value: unknown, name: string): string {
+    const str = requireString(value, name)
+    if (!ID_RE.test(str)) {
+        throw new Error(`Invalid ID "${name}": must be 1-64 alphanumeric/dash/underscore chars`)
+    }
+    return str
+}
+
+/** Validates a positive integer. */
+function requirePositiveInt(value: unknown, name: string): number {
+    if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
+        throw new Error(`Invalid parameter "${name}": expected positive integer`)
+    }
+    return value
+}
+
+/* ================================================================== */
+/*  Shell command safety                                               */
+/* ================================================================== */
+
+/** Blocked shell command patterns — prevent destructive/dangerous operations */
+const DANGEROUS_COMMAND_PATTERNS = [
+    /\brm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+)?\//,       // rm -rf / or rm /
+    /\brm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+)?~\//,       // rm -rf ~/
+    /\bmkfs\b/,                                      // format disk
+    /\bdd\s+if=/,                                     // disk overwrite
+    /:(\s*)\(\s*\)\s*\{/,                            // fork bomb
+    /\bshutdown\b/,                                   // shutdown system
+    /\breboot\b/,                                     // reboot system
+    /\bcurl\b.*\|\s*(sh|bash)\b/,                    // pipe curl to shell
+    /\bwget\b.*\|\s*(sh|bash)\b/,                    // pipe wget to shell
+    /\bchmod\s+777\s+\//,                            // chmod 777 on root
+    /\bchown\s+.*\//,                                 // chown on system dirs
+    /\/etc\/shadow/,                                   // access shadow file
+    /\/etc\/passwd/,                                   // access passwd file
+    /\beval\b/,                                        // eval execution
+    /\bexec\b.*>/,                                     // exec redirect
+    /\b>\s*\/dev\/sda/,                               // overwrite disk
+    /\bnc\s+-[a-z]*l/i,                               // netcat listener
+    /\bpython[23]?\s+-m\s+http/,                      // python http server
+]
+
+function validateShellCommand(command: string): void {
+    for (const pattern of DANGEROUS_COMMAND_PATTERNS) {
+        if (pattern.test(command)) {
+            throw new Error(`Blocked: command matches dangerous pattern`)
+        }
+    }
+    if (command.length > 2000) {
+        throw new Error('Command too long (max 2000 characters)')
+    }
+}
+
+/* ================================================================== */
+/*  Safe environment variable filtering                                */
+/* ================================================================== */
+
+/** Only pass safe env vars to subprocesses (terminal, shell, MCP) */
+const SAFE_ENV_KEYS = [
+    'PATH', 'HOME', 'USER', 'SHELL', 'LANG', 'LC_ALL', 'LC_CTYPE',
+    'TERM', 'TERM_PROGRAM', 'COLORTERM', 'EDITOR', 'VISUAL',
+    'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'XDG_RUNTIME_DIR',
+    'DISPLAY', 'WAYLAND_DISPLAY', 'DBUS_SESSION_BUS_ADDRESS',
+    'TMPDIR', 'TMP', 'TEMP',
+    'NODE_ENV', 'HOSTNAME',
+]
+
+function safeEnv(): Record<string, string> {
+    const env: Record<string, string> = {}
+    for (const key of SAFE_ENV_KEYS) {
+        if (process.env[key]) env[key] = process.env[key]!
+    }
+    return env
+}
 
 /**
  * Register all IPC handlers for the Tesserin app.
@@ -10,50 +131,71 @@ import { mcpClientManager, type McpServerConfig } from './mcp-client'
 export function registerIpcHandlers(): void {
     // ── Notes ─────────────────────────────────────────────────────────
     ipcMain.handle('db:notes:list', () => db.listNotes())
-    ipcMain.handle('db:notes:get', (_e, id: string) => db.getNote(id))
-    ipcMain.handle('db:notes:create', (_e, data) => db.createNote(data))
-    ipcMain.handle('db:notes:update', (_e, id: string, data) => db.updateNote(id, data))
-    ipcMain.handle('db:notes:delete', (_e, id: string) => db.deleteNote(id))
-    ipcMain.handle('db:notes:search', (_e, query: string) => db.searchNotes(query))
-    ipcMain.handle('db:notes:getByTitle', (_e, title: string) => db.getNoteByTitle(title))
+    ipcMain.handle('db:notes:get', (_e, id) => db.getNote(validateId(id, 'id')))
+    ipcMain.handle('db:notes:create', (_e, data) => {
+        if (!data || typeof data !== 'object') throw new Error('Invalid note data')
+        return db.createNote(data)
+    })
+    ipcMain.handle('db:notes:update', (_e, id, data) => {
+        if (!data || typeof data !== 'object') throw new Error('Invalid note data')
+        return db.updateNote(validateId(id, 'id'), data)
+    })
+    ipcMain.handle('db:notes:delete', (_e, id) => db.deleteNote(validateId(id, 'id')))
+    ipcMain.handle('db:notes:search', (_e, query) => db.searchNotes(requireString(query, 'query')))
+    ipcMain.handle('db:notes:getByTitle', (_e, title) => db.getNoteByTitle(requireString(title, 'title')))
 
     // ── Tags ──────────────────────────────────────────────────────────
     ipcMain.handle('db:tags:list', () => db.listTags())
-    ipcMain.handle('db:tags:create', (_e, name: string, color?: string) => db.createTag(name, color))
-    ipcMain.handle('db:tags:delete', (_e, id: string) => db.deleteTag(id))
-    ipcMain.handle('db:tags:addToNote', (_e, noteId: string, tagId: string) => db.addTagToNote(noteId, tagId))
-    ipcMain.handle('db:tags:removeFromNote', (_e, noteId: string, tagId: string) => db.removeTagFromNote(noteId, tagId))
-    ipcMain.handle('db:tags:getForNote', (_e, noteId: string) => db.getTagsForNote(noteId))
+    ipcMain.handle('db:tags:create', (_e, name, color?) => db.createTag(requireString(name, 'name'), optionalString(color, 'color')))
+    ipcMain.handle('db:tags:delete', (_e, id) => db.deleteTag(validateId(id, 'id')))
+    ipcMain.handle('db:tags:addToNote', (_e, noteId, tagId) => db.addTagToNote(validateId(noteId, 'noteId'), validateId(tagId, 'tagId')))
+    ipcMain.handle('db:tags:removeFromNote', (_e, noteId, tagId) => db.removeTagFromNote(validateId(noteId, 'noteId'), validateId(tagId, 'tagId')))
+    ipcMain.handle('db:tags:getForNote', (_e, noteId) => db.getTagsForNote(validateId(noteId, 'noteId')))
 
     // ── Folders ───────────────────────────────────────────────────────
     ipcMain.handle('db:folders:list', () => db.listFolders())
-    ipcMain.handle('db:folders:create', (_e, name: string, parentId?: string) => db.createFolder(name, parentId))
-    ipcMain.handle('db:folders:rename', (_e, id: string, name: string) => db.renameFolder(id, name))
-    ipcMain.handle('db:folders:delete', (_e, id: string) => db.deleteFolder(id))
+    ipcMain.handle('db:folders:create', (_e, name, parentId?) => db.createFolder(requireString(name, 'name'), optionalString(parentId, 'parentId')))
+    ipcMain.handle('db:folders:rename', (_e, id, name) => db.renameFolder(validateId(id, 'id'), requireString(name, 'name')))
+    ipcMain.handle('db:folders:delete', (_e, id) => db.deleteFolder(validateId(id, 'id')))
 
     // ── Tasks ─────────────────────────────────────────────────────────
     ipcMain.handle('db:tasks:list', () => db.listTasks())
-    ipcMain.handle('db:tasks:create', (_e, data) => db.createTask(data))
-    ipcMain.handle('db:tasks:update', (_e, id: string, data) => db.updateTask(id, data))
-    ipcMain.handle('db:tasks:delete', (_e, id: string) => db.deleteTask(id))
+    ipcMain.handle('db:tasks:create', (_e, data) => {
+        if (!data || typeof data !== 'object') throw new Error('Invalid task data')
+        return db.createTask(data)
+    })
+    ipcMain.handle('db:tasks:update', (_e, id, data) => {
+        if (!data || typeof data !== 'object') throw new Error('Invalid task data')
+        return db.updateTask(validateId(id, 'id'), data)
+    })
+    ipcMain.handle('db:tasks:delete', (_e, id) => db.deleteTask(validateId(id, 'id')))
 
     // ── Templates ─────────────────────────────────────────────────────
     ipcMain.handle('db:templates:list', () => db.listTemplates())
-    ipcMain.handle('db:templates:get', (_e, id: string) => db.getTemplate(id))
-    ipcMain.handle('db:templates:create', (_e, data) => db.createTemplate(data))
-    ipcMain.handle('db:templates:delete', (_e, id: string) => db.deleteTemplate(id))
+    ipcMain.handle('db:templates:get', (_e, id) => db.getTemplate(validateId(id, 'id')))
+    ipcMain.handle('db:templates:create', (_e, data) => {
+        if (!data || typeof data !== 'object') throw new Error('Invalid template data')
+        return db.createTemplate(data)
+    })
+    ipcMain.handle('db:templates:delete', (_e, id) => db.deleteTemplate(validateId(id, 'id')))
 
     // ── Settings ──────────────────────────────────────────────────────
-    ipcMain.handle('db:settings:get', (_e, key: string) => db.getSetting(key))
-    ipcMain.handle('db:settings:set', (_e, key: string, value: string) => db.setSetting(key, value))
+    ipcMain.handle('db:settings:get', (_e, key) => db.getSetting(requireString(key, 'key')))
+    ipcMain.handle('db:settings:set', (_e, key, value) => db.setSetting(requireString(key, 'key'), requireString(value, 'value')))
     ipcMain.handle('db:settings:getAll', () => db.getAllSettings())
 
     // ── Canvases ──────────────────────────────────────────────────────
     ipcMain.handle('db:canvases:list', () => db.listCanvases())
-    ipcMain.handle('db:canvases:get', (_e, id: string) => db.getCanvas(id))
-    ipcMain.handle('db:canvases:create', (_e, data) => db.createCanvas(data))
-    ipcMain.handle('db:canvases:update', (_e, id: string, data) => db.updateCanvas(id, data))
-    ipcMain.handle('db:canvases:delete', (_e, id: string) => db.deleteCanvas(id))
+    ipcMain.handle('db:canvases:get', (_e, id) => db.getCanvas(validateId(id, 'id')))
+    ipcMain.handle('db:canvases:create', (_e, data) => {
+        if (!data || typeof data !== 'object') throw new Error('Invalid canvas data')
+        return db.createCanvas(data)
+    })
+    ipcMain.handle('db:canvases:update', (_e, id, data) => {
+        if (!data || typeof data !== 'object') throw new Error('Invalid canvas data')
+        return db.updateCanvas(validateId(id, 'id'), data)
+    })
+    ipcMain.handle('db:canvases:delete', (_e, id) => db.deleteCanvas(validateId(id, 'id')))
 
     // ── AI ────────────────────────────────────────────────────────────
     ipcMain.handle('ai:chat', async (_e, messages, model?) => {
@@ -125,5 +267,205 @@ export function registerIpcHandlers(): void {
 
     ipcMain.handle('mcp:getServerTools', async (_e, serverId: string) => {
         return mcpClientManager.getServerTools(serverId)
+    })
+
+    // ── Terminal (node-pty) ───────────────────────────────────────────
+    const terminals = new Map<string, pty.IPty>()
+    let terminalIdCounter = 0
+
+    ipcMain.handle('terminal:spawn', (event, cwd?) => {
+        const id = `term-${++terminalIdCounter}`
+        const shell = os.platform() === 'win32' ? 'powershell.exe' : (process.env.SHELL || '/bin/bash')
+        const safeCwd = cwd ? validatePath(cwd, 'cwd') : os.homedir()
+        const term = pty.spawn(shell, [], {
+            name: 'xterm-256color',
+            cols: 80,
+            rows: 24,
+            cwd: safeCwd,
+            env: safeEnv(),
+        })
+
+        terminals.set(id, term)
+
+        term.onData((data: string) => {
+            event.sender.send(`terminal:data:${id}`, data)
+        })
+
+        term.onExit(({ exitCode }: { exitCode: number }) => {
+            event.sender.send(`terminal:exit:${id}`, exitCode)
+            terminals.delete(id)
+        })
+
+        return { id, pid: term.pid }
+    })
+
+    ipcMain.on('terminal:write', (_e, id: string, data: string) => {
+        if (typeof id !== 'string' || typeof data !== 'string') return
+        terminals.get(id)?.write(data)
+    })
+
+    ipcMain.on('terminal:resize', (_e, id: string, cols: number, rows: number) => {
+        if (typeof id !== 'string') return
+        const safeCols = Math.max(1, Math.min(cols || 80, 500))
+        const safeRows = Math.max(1, Math.min(rows || 24, 200))
+        terminals.get(id)?.resize(safeCols, safeRows)
+    })
+
+    ipcMain.on('terminal:kill', (_e, id: string) => {
+        const term = terminals.get(id)
+        if (term) {
+            term.kill()
+            terminals.delete(id)
+        }
+    })
+
+    // ── Filesystem ────────────────────────────────────────────────────
+    ipcMain.handle('fs:readDir', async (_e, dirPath) => {
+        const safePath = validatePath(dirPath, 'dirPath')
+        const entries = await fs.promises.readdir(safePath, { withFileTypes: true })
+        return entries
+            .filter(e => !e.name.startsWith('.'))
+            .map(e => ({
+                name: e.name,
+                path: path.join(safePath, e.name),
+                isDirectory: e.isDirectory(),
+            }))
+            .sort((a, b) => {
+                if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1
+                return a.name.localeCompare(b.name)
+            })
+    })
+
+    ipcMain.handle('fs:readFile', async (_e, filePath) => {
+        return fs.promises.readFile(validatePath(filePath, 'filePath'), 'utf-8')
+    })
+
+    ipcMain.handle('fs:writeFile', async (_e, filePath, content) => {
+        if (typeof content !== 'string') throw new Error('Invalid content: expected string')
+        await fs.promises.writeFile(validatePath(filePath, 'filePath'), content, 'utf-8')
+    })
+
+    ipcMain.handle('fs:stat', async (_e, filePath) => {
+        const stat = await fs.promises.stat(validatePath(filePath, 'filePath'))
+        return {
+            size: stat.size,
+            isDirectory: stat.isDirectory(),
+            isFile: stat.isFile(),
+            modified: stat.mtime.toISOString(),
+        }
+    })
+
+    // ── Shell Exec (non-interactive, for AI agent) ────────────────────
+    ipcMain.handle('shell:exec', (_e, command, cwd?) => {
+        const safeCommand = requireString(command, 'command')
+        validateShellCommand(safeCommand)
+        const safeCwd = cwd ? validatePath(cwd, 'cwd') : os.homedir()
+        return new Promise<{ stdout: string; stderr: string; exitCode: number }>((resolve) => {
+            const shell = os.platform() === 'win32' ? 'powershell.exe' : '/bin/bash'
+            const args = os.platform() === 'win32' ? ['-Command', safeCommand] : ['-c', safeCommand]
+            const child = execFile(shell, args, {
+                cwd: safeCwd,
+                timeout: 30000,
+                maxBuffer: 1024 * 1024,
+                env: safeEnv(),
+            }, (error, stdout, stderr) => {
+                resolve({
+                    stdout: stdout || '',
+                    stderr: stderr || '',
+                    exitCode: error ? (error as any).code || 1 : 0,
+                })
+            })
+        })
+    })
+
+    // ── Filesystem: mkdir + delete ────────────────────────────────────
+    ipcMain.handle('fs:mkdir', async (_e, dirPath) => {
+        await fs.promises.mkdir(validatePath(dirPath, 'dirPath'), { recursive: true })
+    })
+
+    ipcMain.handle('fs:delete', async (_e, filePath) => {
+        const safePath = validatePath(filePath, 'filePath')
+        // Prevent deleting critical system paths — use strict blocklist
+        const dangerous = [
+            '/', '/usr', '/bin', '/sbin', '/etc', '/var', '/tmp', '/opt',
+            '/home', '/root', '/boot', '/dev', '/proc', '/sys', '/lib', '/lib64',
+            os.homedir(),
+        ]
+        const resolvedLower = safePath.toLowerCase()
+        if (dangerous.some(d => resolvedLower === d || resolvedLower === d + '/')) {
+            throw new Error('Refusing to delete critical system path')
+        }
+        // Must not be inside a system directory (only allow user-space paths)
+        const allowedRoots = [os.homedir()]
+        if (!allowedRoots.some(root => safePath.startsWith(root + path.sep) && safePath !== root)) {
+            throw new Error('fs:delete only allowed within user home directory')
+        }
+        const stat = await fs.promises.stat(safePath)
+        if (stat.isDirectory()) {
+            await fs.promises.rm(safePath, { recursive: true })
+        } else {
+            await fs.promises.unlink(safePath)
+        }
+    })
+
+    // ── Dialog ────────────────────────────────────────────────────────
+    ipcMain.handle('dialog:openFolder', async () => {
+        const win = BrowserWindow.getFocusedWindow()
+        if (!win) return null
+        const result = await dialog.showOpenDialog(win, {
+            properties: ['openDirectory'],
+        })
+        return result.canceled ? null : result.filePaths[0]
+    })
+
+    // ── API Keys ─────────────────────────────────────────────────────
+    ipcMain.handle('api:keys:list', () => {
+        const keys = db.listApiKeys()
+        // Never send key_hash to renderer
+        return keys.map(k => ({
+            id: k.id,
+            name: k.name,
+            prefix: k.prefix,
+            permissions: k.permissions,
+            created_at: k.created_at,
+            last_used_at: k.last_used_at,
+            expires_at: k.expires_at,
+            is_revoked: k.is_revoked,
+        }))
+    })
+
+    ipcMain.handle('api:keys:create', (_e, data: { name: string; permissions?: string[]; expiresAt?: string }) => {
+        if (!data || typeof data !== 'object') throw new Error('Invalid API key data')
+        const name = requireString(data.name, 'name')
+        const { rawKey, keyHash, prefix } = generateApiKey()
+        const id = randomUUID()
+        const permissions = Array.isArray(data.permissions) ? data.permissions : ['*']
+        db.createApiKey({ id, name, keyHash, prefix, permissions, expiresAt: data.expiresAt })
+        // Return raw key ONCE — it cannot be recovered after this
+        return { id, name, prefix, rawKey, permissions }
+    })
+
+    ipcMain.handle('api:keys:revoke', (_e, id: string) => {
+        db.revokeApiKey(validateId(id, 'id'))
+    })
+
+    ipcMain.handle('api:keys:delete', (_e, id: string) => {
+        db.deleteApiKey(validateId(id, 'id'))
+    })
+
+    // ── API Server ───────────────────────────────────────────────────
+    ipcMain.handle('api:server:start', async (_e, port?: number) => {
+        const safePort = typeof port === 'number' && port > 0 && port < 65536 ? port : 9960
+        const actualPort = await startApiServer(safePort)
+        return { running: true, port: actualPort }
+    })
+
+    ipcMain.handle('api:server:stop', () => {
+        stopApiServer()
+        return { running: false }
+    })
+
+    ipcMain.handle('api:server:status', () => {
+        return getApiServerStatus()
     })
 }

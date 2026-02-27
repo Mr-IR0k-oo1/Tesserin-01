@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, Component, type ErrorInfo, type ReactNode } from "react"
 
 // Core
 import { TesserinThemeProvider } from "@/components/tesserin/core/theme-provider"
@@ -23,15 +23,62 @@ import { MarkdownEditor } from "@/components/tesserin/workspace/markdown-editor"
 import { CreativeCanvas } from "@/components/tesserin/workspace/creative-canvas"
 import { D3GraphView } from "@/components/tesserin/workspace/d3-graph-view"
 import { CodeView } from "@/components/tesserin/workspace/code-view"
-import { KanbanView } from "@/components/tesserin/workspace/kanban-view"
-import { DailyNotes } from "@/components/tesserin/workspace/daily-notes"
 import { SAMNode } from "@/components/tesserin/workspace/sam-node"
-import { TimelineView } from "@/components/tesserin/workspace/timeline-view"
 import { SplitPanes, useSplitPanes } from "@/components/tesserin/workspace/split-panes"
 import { SettingsPanel } from "@/components/tesserin/panels/settings-panel"
 
+// Lazy import for quick capture overlay (not a core tab, just an overlay)
+const DailyNotes = React.lazy(() =>
+    import("@/components/tesserin/workspace/daily-notes").then((m) => ({ default: m.DailyNotes }))
+)
+
 import { NotesProvider, useNotes } from "@/lib/notes-store"
+import { usePlugins } from "@/lib/plugin-system"
 import { getStartupTip, formatShortcut, type TesserinTip } from "@/lib/tips"
+import { getSetting } from "@/lib/storage-client"
+
+/**
+ * Error Boundary — catches any unhandled render error and shows a
+ * recovery screen instead of a white page.
+ */
+interface EBProps { children: ReactNode }
+interface EBState { error: Error | null }
+
+class ErrorBoundary extends Component<EBProps, EBState> {
+    state: EBState = { error: null }
+
+    static getDerivedStateFromError(error: Error): EBState {
+        return { error }
+    }
+
+    componentDidCatch(error: Error, info: ErrorInfo) {
+        console.error("[Tesserin] Uncaught render error:", error, info.componentStack)
+    }
+
+    render() {
+        if (this.state.error) {
+            return (
+                <div
+                    className="w-full h-screen flex flex-col items-center justify-center gap-4 p-8 font-sans"
+                    style={{ backgroundColor: "#050505", color: "#e4e4e7" }}
+                >
+                    <h1 className="text-xl font-bold">Something went wrong</h1>
+                    <pre className="max-w-xl text-sm opacity-70 whitespace-pre-wrap break-words">
+                        {this.state.error.message}
+                    </pre>
+                    <button
+                        className="mt-4 px-4 py-2 rounded-lg text-sm font-medium"
+                        style={{ backgroundColor: "#27272a", border: "1px solid #3f3f46" }}
+                        onClick={() => this.setState({ error: null })}
+                    >
+                        Try Again
+                    </button>
+                </div>
+            )
+        }
+        return this.props.children
+    }
+}
 
 /**
  * Tesserin App — Root Component
@@ -56,9 +103,33 @@ function AppContent() {
     const [showQuickCapture, setShowQuickCapture] = useState(false)
     const [notice, setNotice] = useState<{ message: string; visible: boolean }>({ message: "", visible: false })
     const { notes, selectedNoteId, selectNote } = useNotes()
+    const { panels } = usePlugins()
     const { splitState, openSplit, closeSplit } = useSplitPanes()
 
     const selectedNote = notes.find(n => n.id === selectedNoteId) || null
+
+    // Feature toggles — control which features are shown
+    const [features, setFeatures] = useState<Record<string, boolean>>({})
+    useEffect(() => {
+        async function loadFeatures() {
+            const keys = [
+                "features.floatingChat", "features.statusBar", "features.backlinks",
+                "features.versionHistory", "features.references", "features.splitPanes",
+                "features.dailyNotes", "features.templates",
+            ]
+            const f: Record<string, boolean> = {}
+            for (const key of keys) {
+                const val = await getSetting(key)
+                f[key] = val !== "false" // default true
+            }
+            setFeatures(f)
+        }
+        loadFeatures()
+        const interval = setInterval(loadFeatures, 2000)
+        return () => clearInterval(interval)
+    }, [])
+
+    const isFeatureEnabled = useCallback((key: string) => features[key] !== false, [features])
 
     // Plugin notice handler
     const handleNotice = useCallback((message: string, duration = 3000) => {
@@ -87,12 +158,9 @@ function AppContent() {
             case "open-quick-capture": setShowQuickCapture(true); break
             case "open-references": setShowReferences(true); break
             case "open-split": openSplit(); break
-            case "navigate-daily": setActiveTab("daily"); break
             case "navigate-graph": setActiveTab("graph"); break
             case "navigate-canvas": setActiveTab("canvas"); break
-            case "navigate-kanban": setActiveTab("kanban"); break
             case "navigate-sam": setActiveTab("sam"); break
-            case "navigate-timeline": setActiveTab("timeline"); break
             case "navigate-settings": setActiveTab("settings"); break
         }
     }, [openSplit])
@@ -178,7 +246,7 @@ function AppContent() {
                                     <SplitPanes
                                         primaryContent={<MarkdownEditor />}
                                         onRequestSplit={() => openSplit()}
-                                        secondaryContent={splitState.isActive ? <MarkdownEditor /> : null}
+                                        secondaryContent={splitState.isActive && isFeatureEnabled("features.splitPanes") ? <MarkdownEditor /> : null}
                                         secondaryLabel="Split Editor"
                                         onCloseSecondary={closeSplit}
                                         direction={splitState.direction}
@@ -187,19 +255,25 @@ function AppContent() {
                                 <div className={`w-full h-full ${activeTab === "canvas" ? "" : "hidden"}`}><CreativeCanvas /></div>
                                 <div className={`w-full h-full ${activeTab === "graph" ? "" : "hidden"}`}><D3GraphView /></div>
                                 <div className={`w-full h-full ${activeTab === "code" ? "" : "hidden"}`}><CodeView /></div>
-                                <div className={`w-full h-full ${activeTab === "kanban" ? "" : "hidden"}`}><KanbanView /></div>
-                                <div className={`w-full h-full ${activeTab === "daily" ? "" : "hidden"}`}><DailyNotes /></div>
                                 <div className={`w-full h-full ${activeTab === "sam" ? "" : "hidden"}`}><SAMNode /></div>
-                                <div className={`w-full h-full ${activeTab === "timeline" ? "" : "hidden"}`}><TimelineView /></div>
                                 <div className={`w-full h-full ${activeTab === "settings" ? "" : "hidden"}`}><SettingsPanel /></div>
+                                {/* Dynamic plugin workspace panels */}
+                                {panels
+                                    .filter((p) => p.location === "workspace")
+                                    .map((p) => (
+                                        <div key={p.id} className={`w-full h-full ${activeTab === p.id ? "" : "hidden"}`}>
+                                            <p.component />
+                                        </div>
+                                    ))
+                                }
                             </SkeuoPanel>
 
                             {/* Right panels: Backlinks / Version History */}
-                            {(showBacklinks || showVersionHistory) && activeTab === "notes" && (
+                            {((showBacklinks && isFeatureEnabled("features.backlinks")) || (showVersionHistory && isFeatureEnabled("features.versionHistory"))) && activeTab === "notes" && (
                                 <SkeuoPanel className="w-72 flex-shrink-0 h-full flex flex-col overflow-hidden">
-                                    {showBacklinks && <BacklinksPanel />}
-                                    {showVersionHistory && !showBacklinks && <VersionHistoryPanel />}
-                                    {showBacklinks && showVersionHistory && (
+                                    {showBacklinks && isFeatureEnabled("features.backlinks") && <BacklinksPanel />}
+                                    {showVersionHistory && isFeatureEnabled("features.versionHistory") && !(showBacklinks && isFeatureEnabled("features.backlinks")) && <VersionHistoryPanel />}
+                                    {showBacklinks && isFeatureEnabled("features.backlinks") && showVersionHistory && isFeatureEnabled("features.versionHistory") && (
                                         <div className="border-t" style={{ borderColor: "var(--border-dark)" }}>
                                             <VersionHistoryPanel />
                                         </div>
@@ -211,14 +285,19 @@ function AppContent() {
                 </div>
 
                 {/* ── Status Bar (plugin widgets + rotating tips) ── */}
-                <StatusBar activeTab={activeTab} onTipAction={handleTipAction} />
+                {isFeatureEnabled("features.statusBar") && (
+                    <StatusBar activeTab={activeTab} onTipAction={handleTipAction} />
+                )}
 
                 {/* ── Floating AI Chat ── */}
-                <FloatingAIChat />
+                {isFeatureEnabled("features.floatingChat") && <FloatingAIChat />}
 
                 {/* ── Notice Toast ── */}
                 {notice.visible && (
                     <div
+                        role="status"
+                        aria-live="polite"
+                        aria-atomic="true"
                         className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[110] px-4 py-2 rounded-xl text-sm font-medium animate-in fade-in slide-in-from-bottom-2 duration-200"
                         style={{
                             backgroundColor: "var(--bg-panel)",
@@ -244,17 +323,23 @@ function AppContent() {
                     onClose={() => setShowExport(false)}
                     note={selectedNote}
                 />
-                <TemplateManager
-                    isOpen={showTemplates}
-                    onClose={() => setShowTemplates(false)}
-                    onCreateNote={handleSelectNote}
-                />
-                <ReferenceManager
-                    isOpen={showReferences}
-                    onClose={() => setShowReferences(false)}
-                />
-                {showQuickCapture && (
-                    <DailyNotes quickCapture onClose={() => setShowQuickCapture(false)} />
+                {isFeatureEnabled("features.templates") && (
+                    <TemplateManager
+                        isOpen={showTemplates}
+                        onClose={() => setShowTemplates(false)}
+                        onCreateNote={handleSelectNote}
+                    />
+                )}
+                {isFeatureEnabled("features.references") && (
+                    <ReferenceManager
+                        isOpen={showReferences}
+                        onClose={() => setShowReferences(false)}
+                    />
+                )}
+                {showQuickCapture && isFeatureEnabled("features.dailyNotes") && (
+                    <React.Suspense fallback={null}>
+                        <DailyNotes quickCapture onClose={() => setShowQuickCapture(false)} />
+                    </React.Suspense>
                 )}
             </div>
         </PluginProvider>
@@ -279,9 +364,11 @@ export default function App() {
 
     return (
         <TesserinThemeProvider>
-            <NotesProvider>
-                <AppContent />
-            </NotesProvider>
+            <ErrorBoundary>
+                <NotesProvider>
+                    <AppContent />
+                </NotesProvider>
+            </ErrorBoundary>
         </TesserinThemeProvider>
     )
 }

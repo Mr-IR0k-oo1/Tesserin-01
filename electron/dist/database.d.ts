@@ -67,4 +67,27 @@ export declare function updateCanvas(id: string, data: {
     files?: string;
 }): unknown;
 export declare function deleteCanvas(id: string): Database.RunResult;
+export declare function listApiKeys(): Array<{
+    id: string;
+    name: string;
+    key_hash: string;
+    prefix: string;
+    permissions: string;
+    created_at: string;
+    last_used_at: string | null;
+    expires_at: string | null;
+    is_revoked: number;
+}>;
+export declare function getApiKey(id: string): unknown;
+export declare function createApiKey(data: {
+    id: string;
+    name: string;
+    keyHash: string;
+    prefix: string;
+    permissions: string[];
+    expiresAt?: string;
+}): unknown;
+export declare function revokeApiKey(id: string): void;
+export declare function deleteApiKey(id: string): Database.RunResult;
+export declare function touchApiKey(id: string): void;
 //# sourceMappingURL=database.d.ts.map

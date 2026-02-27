@@ -1,8 +1,9 @@
 "use client"
 
-import React, { useState } from "react"
-import { FiFileText, FiCompass, FiCode, FiSettings, FiGrid, FiCalendar, FiClock, FiChevronsRight, FiChevronsLeft } from "react-icons/fi"
+import React, { useState, useEffect } from "react"
+import { FiFileText, FiCompass, FiCode, FiSettings, FiChevronsRight, FiChevronsLeft } from "react-icons/fi"
 import { HiOutlineCpuChip, HiOutlineSparkles } from "react-icons/hi2"
+import { usePlugins } from "@/lib/plugin-system"
 import { SkeuoPanel } from "../core/skeuo-panel"
 import { TesserinLogo } from "../core/tesserin-logo"
 import {
@@ -10,6 +11,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip"
+import { getSetting } from "@/lib/storage-client"
 
 /**
  * LeftDock
@@ -18,28 +20,74 @@ import {
  * Supports expanded (icon + label) and collapsed (icon-only w/ tooltips) modes.
  */
 
-/** Tab definitions */
-const TABS = [
+/** Core tab definitions — always visible */
+const CORE_TABS = [
   { id: "notes", icon: FiFileText, label: "Notes" },
   { id: "canvas", icon: FiCompass, label: "Canvas" },
   { id: "graph", icon: HiOutlineCpuChip, label: "Graph" },
   { id: "code", icon: FiCode, label: "Code" },
-  { id: "kanban", icon: FiGrid, label: "Kanban" },
-  { id: "daily", icon: FiCalendar, label: "Daily" },
-  { id: "timeline", icon: FiClock, label: "Timeline" },
   { id: "sam", icon: HiOutlineSparkles, label: "SAM" },
   { id: "settings", icon: FiSettings, label: "Settings" },
 ] as const
 
-export type TabId = (typeof TABS)[number]["id"]
+export type CoreTabId = (typeof CORE_TABS)[number]["id"]
+/** TabId includes core tabs plus any dynamic plugin panel IDs */
+export type TabId = CoreTabId | (string & {})
 
 interface LeftDockProps {
   activeTab: TabId
   setActiveTab: (tab: TabId) => void
 }
 
+/** Map tab IDs to their corresponding feature setting key */
+const TAB_FEATURE_MAP: Record<string, string> = {
+  canvas: "features.canvas",
+  graph: "features.graph",
+  code: "features.codeView",
+  sam: "features.sam",
+}
+
 export function LeftDock({ activeTab, setActiveTab }: LeftDockProps) {
   const [expanded, setExpanded] = useState(false)
+  const { panels } = usePlugins()
+  const [enabledFeatures, setEnabledFeatures] = useState<Record<string, boolean>>({})
+
+  // Load feature toggles from settings
+  useEffect(() => {
+    async function load() {
+      const features: Record<string, boolean> = {}
+      for (const [tabId, key] of Object.entries(TAB_FEATURE_MAP)) {
+        const val = await getSetting(key)
+        features[tabId] = val !== "false" // default to true
+      }
+      setEnabledFeatures(features)
+    }
+    load()
+
+    // Re-check periodically in case settings changed
+    const interval = setInterval(load, 2000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Build the full tab list: core tabs (with plugin workspace panels inserted before settings)
+  const pluginWorkspacePanels = panels.filter((p) => p.location === "workspace")
+  const allTabs: Array<{ id: string; icon: React.ComponentType<any>; label: string }> = []
+  for (const tab of CORE_TABS) {
+    // Skip tabs whose feature is disabled
+    if (TAB_FEATURE_MAP[tab.id] && enabledFeatures[tab.id] === false) continue
+
+    if (tab.id === "settings" && pluginWorkspacePanels.length > 0) {
+      // Insert plugin panels before settings
+      for (const pp of pluginWorkspacePanels) {
+        allTabs.push({
+          id: pp.id,
+          icon: () => <>{pp.icon}</>,
+          label: pp.label,
+        })
+      }
+    }
+    allTabs.push(tab)
+  }
 
   return (
     <div
@@ -70,7 +118,7 @@ export function LeftDock({ activeTab, setActiveTab }: LeftDockProps) {
 
         {/* Navigation tabs */}
         <nav className="flex-1 flex flex-col gap-1.5 w-full px-2" aria-label="Main navigation">
-          {TABS.map((item) => {
+          {allTabs.map((item) => {
             const isActive = activeTab === item.id
 
             const button = (
@@ -113,9 +161,9 @@ export function LeftDock({ activeTab, setActiveTab }: LeftDockProps) {
                     sideOffset={12}
                     className="font-medium text-xs px-3 py-1.5 rounded-lg"
                     style={{
-                      backgroundColor: "#1a1a1a",
-                      color: "#ededed",
-                      border: "1px solid rgba(255,255,255,0.08)",
+                      backgroundColor: "var(--tooltip-bg)",
+                      color: "var(--tooltip-text)",
+                      border: "1px solid var(--tooltip-border)",
                     }}
                   >
                     {item.label}
@@ -164,9 +212,9 @@ export function LeftDock({ activeTab, setActiveTab }: LeftDockProps) {
                 sideOffset={12}
                 className="font-medium text-xs px-3 py-1.5 rounded-lg"
                 style={{
-                  backgroundColor: "#1a1a1a",
-                  color: "#ededed",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  backgroundColor: "var(--tooltip-bg)",
+                  color: "var(--tooltip-text)",
+                  border: "1px solid var(--tooltip-border)",
                 }}
               >
                 Expand sidebar
