@@ -76,11 +76,12 @@ jobs:
         run: pnpm install --no-frozen-lockfile
 
       - name: Import Apple signing certs
-        if: matrix.os == 'macos-latest'
+        if: matrix.os == 'macos-latest' && secrets.MACOS_CERTIFICATE != ''
         uses: apple-actions/import-codesign-certs@v3
         with:
           p12-file-base64: ${{ secrets.MACOS_CERTIFICATE }}
           p12-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+        continue-on-error: true
 
       - name: Build renderer
         run: pnpm build
@@ -89,13 +90,14 @@ jobs:
         run: pnpm tsc -p electron/tsconfig.json
 
       - name: Package Electron app
-        run: pnpm electron:build
+        run: pnpm electron-builder --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          CSC_IDENTITY_AUTO_DISCOVERY: "true"
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.os == 'macos-latest' && secrets.MACOS_CERTIFICATE != '' && 'true' || 'false' }}
+          CSC_LINK: ""
 
       - name: Create GitHub Release & upload binaries
         uses: softprops/action-gh-release@v2
