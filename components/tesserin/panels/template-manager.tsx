@@ -1,9 +1,7 @@
 "use client"
 
 import React, { useState, useCallback } from "react"
-import { FiLayers, FiPlus, FiCopy, FiCheck, FiClipboard, FiTarget, FiBook, FiCalendar, FiTrendingUp, FiCpu, FiMessageSquare, FiFileText } from "react-icons/fi"
-import { HiOutlineSparkles } from "react-icons/hi2"
-import { SkeuoPanel } from "../core/skeuo-panel"
+import { FiPlus, FiCheck, FiClipboard, FiTarget, FiBook, FiCalendar, FiTrendingUp, FiCpu, FiMessageSquare, FiFileText, FiX } from "react-icons/fi"
 import { useNotes } from "@/lib/notes-store"
 
 /**
@@ -290,94 +288,103 @@ export function TemplateManager({ isOpen, onClose, onCreateNote }: TemplateManag
 
     return (
         <div
-            className="fixed inset-0 z-[90] flex items-center justify-center"
+            className="fixed inset-0 z-[90] flex items-start justify-center pt-[8vh]"
             onClick={onClose}
-            style={{ backgroundColor: "rgba(0, 0, 0, 0.4)", backdropFilter: "blur(4px)" }}
+            style={{ backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}
         >
-            <SkeuoPanel
-                className="w-full max-w-2xl max-h-[80vh] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-200"
-                onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            <div
+                className="w-full max-w-md rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-200 flex flex-col"
+                style={{
+                    backgroundColor: "var(--bg-panel)",
+                    border: "1px solid var(--border-mid)",
+                    boxShadow: "0 25px 60px rgba(0,0,0,0.5)",
+                    maxHeight: "70vh",
+                }}
+                onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="p-6 pb-4 border-b" style={{ borderColor: "var(--border-dark)" }}>
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                            <FiLayers size={20} style={{ color: "var(--accent-primary)" }} />
-                            <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-                                Templates
-                            </h2>
-                            <span
-                                className="text-xs px-2 py-0.5 rounded-full"
-                                style={{ backgroundColor: "var(--bg-panel-inset)", color: "var(--text-tertiary)" }}
-                            >
-                                {BUILT_IN_TEMPLATES.length} templates
-                            </span>
-                        </div>
-                        <button onClick={onClose} className="skeuo-btn px-2 py-1 text-xs rounded-lg">
-                            Close
-                        </button>
-                    </div>
+                <div
+                    className="flex items-center gap-2 px-4 py-3 border-b"
+                    style={{ borderColor: "var(--border-dark)" }}
+                >
+                    <span className="text-sm font-semibold flex-1" style={{ color: "var(--text-primary)" }}>
+                        Templates
+                    </span>
+                    <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+                        {BUILT_IN_TEMPLATES.length} built-in
+                    </span>
+                    <button onClick={onClose} className="ml-2" style={{ color: "var(--text-tertiary)" }}>
+                        <FiX size={14} />
+                    </button>
+                </div>
 
-                    {/* Category filter */}
-                    <div className="flex gap-2 flex-wrap">
+                {/* Category filter */}
+                <div
+                    className="flex items-center gap-1.5 px-4 py-2.5 border-b overflow-x-auto"
+                    style={{ borderColor: "var(--border-dark)" }}
+                >
+                    <button
+                        onClick={() => setSelectedCategory(null)}
+                        className="shrink-0 px-2.5 py-1 rounded-full text-[11px] transition-colors"
+                        style={{
+                            backgroundColor: !selectedCategory ? "var(--bg-panel-inset)" : "transparent",
+                            color: !selectedCategory ? "var(--text-primary)" : "var(--text-tertiary)",
+                            border: "1px solid",
+                            borderColor: !selectedCategory ? "var(--border-mid)" : "transparent",
+                        }}
+                    >
+                        All
+                    </button>
+                    {categories.map((cat) => (
                         <button
-                            onClick={() => setSelectedCategory(null)}
-                            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${!selectedCategory ? "skeuo-btn" : ""}`}
+                            key={cat}
+                            onClick={() => setSelectedCategory(cat)}
+                            className="shrink-0 px-2.5 py-1 rounded-full text-[11px] transition-colors"
                             style={{
-                                backgroundColor: !selectedCategory ? "var(--accent-primary)" : "var(--bg-panel-inset)",
-                                color: !selectedCategory ? "var(--text-on-accent)" : "var(--text-secondary)",
+                                backgroundColor: selectedCategory === cat ? "var(--bg-panel-inset)" : "transparent",
+                                color: selectedCategory === cat ? "var(--text-primary)" : "var(--text-tertiary)",
+                                border: "1px solid",
+                                borderColor: selectedCategory === cat ? "var(--border-mid)" : "transparent",
                             }}
                         >
-                            All
+                            {cat}
                         </button>
-                        {categories.map((cat) => (
-                            <button
-                                key={cat}
-                                onClick={() => setSelectedCategory(cat)}
-                                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${selectedCategory === cat ? "skeuo-btn" : ""}`}
-                                style={{
-                                    backgroundColor: selectedCategory === cat ? "var(--accent-primary)" : "var(--bg-panel-inset)",
-                                    color: selectedCategory === cat ? "var(--text-on-accent)" : "var(--text-secondary)",
-                                }}
-                            >
-                                {cat}
-                            </button>
-                        ))}
-                    </div>
+                    ))}
                 </div>
 
-                {/* Template grid */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-                    <div className="grid grid-cols-2 gap-3">
-                        {filteredTemplates.map((tpl) => (
-                            <button
-                                key={tpl.id}
-                                onClick={() => createFromTemplate(tpl)}
-                                className="skeuo-btn p-4 rounded-xl text-left flex flex-col gap-2 active hover:scale-[1.01] transition-transform"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-500/10 text-blue-500">
-                                        <tpl.icon size={20} />
-                                    </div>
-                                    {createdId === tpl.id ? (
-                                        <FiCheck size={16} className="text-green-500" />
-                                    ) : (
-                                        <FiCopy size={12} style={{ color: "var(--text-tertiary)" }} />
-                                    )}
-                                </div>
-                                <div>
-                                    <div className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                                        {tpl.name}
-                                    </div>
-                                    <div className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                                        {tpl.category}
-                                    </div>
-                                </div>
-                            </button>
-                        ))}
-                    </div>
+                {/* Template list */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar py-1">
+                    {filteredTemplates.map((tpl) => (
+                        <button
+                            key={tpl.id}
+                            onClick={() => createFromTemplate(tpl)}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-panel-inset)")}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                        >
+                            <tpl.icon size={14} style={{ color: "var(--text-tertiary)", flexShrink: 0 }} />
+                            <span className="flex-1 text-sm" style={{ color: "var(--text-primary)" }}>
+                                {tpl.name}
+                            </span>
+                            <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+                                {tpl.category}
+                            </span>
+                            {createdId === tpl.id
+                                ? <FiCheck size={13} className="text-green-500 shrink-0" />
+                                : <FiPlus size={12} style={{ color: "var(--text-tertiary)", flexShrink: 0 }} />
+                            }
+                        </button>
+                    ))}
                 </div>
-            </SkeuoPanel>
+
+                {/* Footer hint */}
+                <div
+                    className="px-4 py-2 text-[10px] border-t"
+                    style={{ borderColor: "var(--border-dark)", color: "var(--text-tertiary)" }}
+                >
+                    Click a template to create a new note · Esc to close
+                </div>
+            </div>
         </div>
     )
 }

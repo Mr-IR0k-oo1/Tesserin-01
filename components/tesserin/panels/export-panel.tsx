@@ -2,10 +2,9 @@
 
 import React, { useState, useCallback } from "react"
 import {
-  FiDownload, FiFileText, FiCode, FiFile, FiCopy, FiCheck,
-  FiPrinter, FiBook, FiGlobe, FiPackage, FiChevronDown,
+  FiFileText, FiCode, FiFile, FiCopy, FiCheck,
+  FiPrinter, FiBook, FiGlobe, FiPackage, FiChevronDown, FiX,
 } from "react-icons/fi"
-import { SkeuoPanel } from "../core/skeuo-panel"
 import { useNotes, type Note } from "@/lib/notes-store"
 
 /**
@@ -320,113 +319,115 @@ export function ExportPanel({ isOpen, onClose, note }: ExportPanelProps) {
     desc: string
     icon: React.ReactNode
   }> = [
-    { id: "markdown", label: "Markdown", desc: ".md file", icon: <FiFileText size={16} /> },
-    { id: "html", label: "HTML", desc: "Styled web page", icon: <FiGlobe size={16} /> },
-    { id: "pdf", label: "PDF", desc: "Print to PDF", icon: <FiPrinter size={16} /> },
-    { id: "latex", label: "LaTeX", desc: ".tex document", icon: <FiBook size={16} /> },
-    { id: "docx", label: "DOCX", desc: "Word XML format", icon: <FiFile size={16} /> },
-    { id: "txt", label: "Plain Text", desc: ".txt file", icon: <FiCode size={16} /> },
-    { id: "json", label: "JSON", desc: "Structured data", icon: <FiCopy size={16} /> },
+    { id: "markdown", label: "Markdown", desc: ".md", icon: <FiFileText size={14} /> },
+    { id: "html",     label: "HTML",     desc: "Styled web page", icon: <FiGlobe size={14} /> },
+    { id: "pdf",      label: "PDF",      desc: "Print dialog", icon: <FiPrinter size={14} /> },
+    { id: "latex",    label: "LaTeX",    desc: ".tex", icon: <FiBook size={14} /> },
+    { id: "docx",     label: "DOCX",     desc: "Word XML", icon: <FiFile size={14} /> },
+    { id: "txt",      label: "Plain Text", desc: ".txt", icon: <FiCode size={14} /> },
+    { id: "json",     label: "JSON",     desc: "Structured data", icon: <FiCopy size={14} /> },
   ]
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center"
+      className="fixed inset-0 z-[90] flex items-start justify-center pt-[10vh]"
       onClick={onClose}
-      style={{ backgroundColor: "rgba(0, 0, 0, 0.4)", backdropFilter: "blur(4px)" }}
+      style={{ backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}
     >
-      <SkeuoPanel
-        className="w-full max-w-lg p-6 animate-in fade-in slide-in-from-bottom-4 duration-200"
-        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+      <div
+        className="w-full max-w-sm rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-200"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          backgroundColor: "var(--bg-panel)",
+          border: "1px solid var(--border-mid)",
+          boxShadow: "0 25px 60px rgba(0,0,0,0.5)",
+        }}
       >
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <FiDownload size={20} style={{ color: "var(--accent-primary)" }} />
-            <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-              Export Pipeline
-            </h2>
-          </div>
-          <button onClick={onClose} className="skeuo-btn px-2 py-1 text-xs rounded-lg">
-            Close
+        {/* Header */}
+        <div
+          className="flex items-center gap-2 px-4 py-3 border-b"
+          style={{ borderColor: "var(--border-dark)" }}
+        >
+          <span className="text-sm font-semibold flex-1" style={{ color: "var(--text-primary)" }}>
+            Export
+          </span>
+          {note && (
+            <span className="text-xs truncate max-w-[160px]" style={{ color: "var(--text-tertiary)" }}>
+              {note.title}
+            </span>
+          )}
+          <button onClick={onClose} style={{ color: "var(--text-tertiary)" }}>
+            <FiX size={14} />
           </button>
         </div>
 
-        {/* Single note export */}
-        {note && (
-          <div className="mb-4">
-            <p className="text-xs mb-3" style={{ color: "var(--text-tertiary)" }}>
-              Exporting: <strong style={{ color: "var(--text-primary)" }}>{note.title}</strong>
-            </p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        {/* Format list */}
+        <div className="py-1">
           {formats.map((f) => (
             <button
               key={f.id}
               onClick={() => exportNote(f.id)}
-              className="skeuo-btn p-4 rounded-xl text-left flex flex-col gap-1 active"
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
+              style={{ color: "var(--text-primary)" }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-panel-inset)")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
             >
-              <div className="flex items-center gap-2">
-                {exported === f.id ? (
-                  <FiCheck size={16} className="text-green-500" />
-                ) : (
-                  f.icon
-                )}
-                <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                  {f.label}
-                </span>
-              </div>
-              <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                {f.desc}
-              </span>
+              <span style={{ color: "var(--text-tertiary)" }}>{f.icon}</span>
+              <span className="flex-1 text-sm">{f.label}</span>
+              <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>{f.desc}</span>
+              {exported === f.id && <FiCheck size={13} className="text-green-500 shrink-0" />}
             </button>
           ))}
         </div>
 
         {/* Divider */}
-        <div
-          className="h-px my-4"
-          style={{ backgroundColor: "var(--border-dark)" }}
-        />
+        <div className="h-px mx-4" style={{ backgroundColor: "var(--border-dark)" }} />
 
-        {/* Full vault export */}
-        <div className="flex items-center gap-2">
+        {/* Vault export */}
+        <div className="px-4 py-3 flex items-center gap-2">
           <button
             onClick={exportVault}
-            className="flex-1 skeuo-btn p-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 active"
-            style={{ color: "var(--accent-primary)" }}
+            className="flex-1 flex items-center gap-2 text-sm py-1.5 transition-colors"
+            style={{ color: "var(--text-secondary)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-primary)")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-secondary)")}
           >
-            <FiPackage size={16} />
-            Export Entire Vault ({notes.length} notes)
+            <FiPackage size={14} />
+            Export vault
+            <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+              ({notes.length} notes)
+            </span>
+            {exported === "json" && <FiCheck size={13} className="text-green-500" />}
           </button>
           <div className="relative">
             <button
               onClick={() => setShowBatchMenu(!showBatchMenu)}
-              className="skeuo-btn px-3 py-3 rounded-xl text-xs flex items-center gap-1"
+              className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md"
+              style={{
+                color: "var(--text-tertiary)",
+                backgroundColor: "var(--bg-panel-inset)",
+                border: "1px solid var(--border-dark)",
+              }}
             >
-              {batchFormat.toUpperCase()} <FiChevronDown size={10} />
+              {batchFormat.toUpperCase()} <FiChevronDown size={9} />
             </button>
             {showBatchMenu && (
               <div
-                className="absolute bottom-full right-0 mb-1 rounded-lg overflow-hidden z-50"
+                className="absolute bottom-full right-0 mb-1 rounded-xl overflow-hidden z-50 py-1"
                 style={{
                   backgroundColor: "var(--bg-panel)",
                   border: "1px solid var(--border-mid)",
-                  boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
                 }}
               >
                 {(["markdown", "html", "latex", "txt", "json"] as ExportFormat[]).map((fmt) => (
                   <button
                     key={fmt}
-                    onClick={() => {
-                      setBatchFormat(fmt)
-                      setShowBatchMenu(false)
-                    }}
-                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-white/10 transition-colors"
-                    style={{
-                      color: fmt === batchFormat ? "var(--accent-primary)" : "var(--text-secondary)",
-                    }}
+                    onClick={() => { setBatchFormat(fmt); setShowBatchMenu(false) }}
+                    className="w-full text-left px-3 py-1.5 text-xs transition-colors"
+                    style={{ color: fmt === batchFormat ? "var(--text-primary)" : "var(--text-tertiary)" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-panel-inset)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                   >
                     {fmt.toUpperCase()}
                   </button>
@@ -436,14 +437,14 @@ export function ExportPanel({ isOpen, onClose, note }: ExportPanelProps) {
           </div>
         </div>
 
-        {/* Info footer */}
-        <p
-          className="text-[10px] mt-4 text-center"
-          style={{ color: "var(--text-tertiary)" }}
+        {/* Footer hint */}
+        <div
+          className="px-4 py-2 text-[10px] border-t"
+          style={{ borderColor: "var(--border-dark)", color: "var(--text-tertiary)" }}
         >
-          PDF uses your browser&apos;s print dialog · LaTeX requires a TeX compiler (TeXLive, MiKTeX) · DOCX exports as Word XML
-        </p>
-      </SkeuoPanel>
+          Esc to close · PDF uses browser print dialog
+        </div>
+      </div>
     </div>
   )
 }
