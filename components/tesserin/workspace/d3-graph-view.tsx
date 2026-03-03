@@ -273,7 +273,25 @@ export function D3GraphView() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [mode, setMode] = useState<GraphMode>("force")
   const [, setHoveredNode] = useState<string | null>(null)
-  const { graph, selectNote, selectedNoteId } = useNotes()
+  const { graph, selectNote, selectedNoteId, notes } = useNotes()
+
+  // Filter
+  const [filterQuery, setFilterQuery] = useState("")
+
+  // Tooltip
+  const [tooltip, setTooltip] = useState<{
+    title: string
+    snippet: string
+  } | null>(null)
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+  const notesContentRef = useRef<Map<string, string>>(new Map())
+  const setTooltipRef = useRef(setTooltip)
+  setTooltipRef.current = setTooltip
+
+  // Keep note-content cache fresh
+  useEffect(() => {
+    notesContentRef.current = new Map(notes.map((n) => [n.id, n.content]))
+  }, [notes])
 
   const simulationRef = useRef<d3.Simulation<SimNode, SimLink> | null>(null)
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
@@ -502,6 +520,18 @@ export function D3GraphView() {
         )
       }
 
+      // Tooltip
+      nodeGroup.on("mouseenter.tooltip", (_event, d: any) => {
+        const raw = notesContentRef.current.get(d.id) ?? ""
+        const snippet = raw
+          .replace(/^#{1,6}\s+/gm, "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 140)
+        setTooltipRef.current({ title: d.title, snippet })
+      })
+      nodeGroup.on("mouseleave.tooltip", () => setTooltipRef.current(null))
+
       return nodeGroup
     }
 
@@ -619,6 +649,18 @@ export function D3GraphView() {
             .attr("font-weight", "500")
         }
       })
+
+      // Tooltip
+      nodeGroup.on("mouseenter.tooltip", (_event, d) => {
+        const raw = notesContentRef.current.get(d.id) ?? ""
+        const snippet = raw
+          .replace(/^#{1,6}\s+/gm, "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 140)
+        setTooltipRef.current({ title: d.title, snippet })
+      })
+      nodeGroup.on("mouseleave.tooltip", () => setTooltipRef.current(null))
 
       // Drag behaviour
       nodeGroup.call(
@@ -769,6 +811,22 @@ export function D3GraphView() {
     }
   }, [renderGraph])
 
+  /* ---- Filter: dim non-matching nodes without full re-render ---- */
+  useEffect(() => {
+    if (!svgRef.current) return
+    const svg = d3.select(svgRef.current)
+    if (!filterQuery.trim()) {
+      svg.selectAll(".graph-node").style("opacity", 1)
+      return
+    }
+    const q = filterQuery.toLowerCase()
+    svg
+      .selectAll<SVGGElement, { title: string }>(".graph-node")
+      .style("opacity", (d) =>
+        d.title.toLowerCase().includes(q) ? 1 : 0.08,
+      )
+  }, [filterQuery])
+
   /* ---- Resize handler ---- */
   useEffect(() => {
     const container = containerRef.current
@@ -826,6 +884,20 @@ export function D3GraphView() {
             ))}
           </div>
 
+          {/* Node filter */}
+          <input
+            type="search"
+            placeholder="Filter nodes…"
+            value={filterQuery}
+            onChange={(e) => setFilterQuery(e.target.value)}
+            className="skeuo-inset px-3 py-1.5 text-[11px] rounded-xl focus:outline-none w-36"
+            style={{
+              color: "var(--text-primary)",
+              backgroundColor: "var(--bg-panel-inset)",
+            }}
+            aria-label="Filter graph nodes by name"
+          />
+
           {/* Node count badge */}
           <span
             className="text-[10px] font-mono px-2.5 py-1 rounded-lg"
@@ -846,6 +918,11 @@ export function D3GraphView() {
         ref={containerRef}
         className="flex-1 relative overflow-hidden"
         style={{ backgroundColor: "var(--bg-app)" }}
+        onMouseMove={(e) => {
+          const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
+          setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+        }}
+        onMouseLeave={() => setTooltipRef.current(null)}
       >
         <svg
           ref={svgRef}
@@ -853,6 +930,35 @@ export function D3GraphView() {
           role="application"
           aria-label={`Knowledge graph — ${mode} layout with ${graph.nodes.length} notes`}
         />
+
+        {/* Hover tooltip */}
+        {tooltip && (
+          <div
+            className="absolute pointer-events-none z-20 max-w-[200px] rounded-xl p-3"
+            style={{
+              left: Math.min(mousePos.x + 18, (containerRef.current?.clientWidth ?? 800) - 220),
+              top: Math.max(mousePos.y - 72, 8),
+              background: "var(--bg-panel)",
+              border: "1px solid var(--border-mid)",
+              boxShadow: "0 8px 28px rgba(0,0,0,0.45)",
+            }}
+          >
+            <div
+              className="text-[11px] font-bold truncate"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {tooltip.title}
+            </div>
+            {tooltip.snippet && (
+              <div
+                className="text-[9px] mt-1 leading-relaxed line-clamp-3"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {tooltip.snippet}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Zoom controls */}
         <div className="absolute bottom-6 right-6 flex flex-col gap-2">

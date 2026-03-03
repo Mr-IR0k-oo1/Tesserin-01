@@ -26,7 +26,6 @@ export interface TesserinTip {
     | "open-split"
     | "navigate-graph"
     | "navigate-canvas"
-    | "navigate-sam"
     | "navigate-settings"
   /** Icon hint for the UI to pick the right icon */
   icon?: "keyboard" | "sparkle" | "lightbulb" | "rocket" | "brain" | "zap"
@@ -217,16 +216,16 @@ export const TESSERIN_TIPS: TesserinTip[] = [
   // ── AI Tips ──
   {
     id: "tip-sam",
-    text: "SAM is your local AI assistant — ask it to brainstorm, summarise, or rewrite your notes. Fully private.",
+    text: "Enable the Offline AI (SAM) plugin for a local, private AI assistant powered by Ollama. No data leaves your machine.",
     category: "ai",
-    action: "navigate-sam",
+    action: "navigate-settings",
     icon: "rocket",
   },
   {
     id: "tip-sam-offline",
-    text: "SAM runs on your machine via Ollama — no cloud, no data leaves your computer. Ever.",
+    text: "SAM runs on your machine via Ollama — no cloud, no subscriptions, no data sent anywhere. Enable it in Settings → Plugins.",
     category: "ai",
-    action: "navigate-sam",
+    action: "navigate-settings",
     icon: "rocket",
   },
 ]

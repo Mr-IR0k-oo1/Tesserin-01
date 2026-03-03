@@ -156,7 +156,7 @@ export function LoadingScreen({ fadingOut = false }: { fadingOut?: boolean }) {
           transition: "opacity 0.5s ease 0.3s",
         }}
       >
-        v1.0.0
+        v1.0.7
       </p>
 
       <span className="sr-only">Loading application</span>

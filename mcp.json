@@ -17,21 +17,32 @@
             "create_note",
             "update_note",
             "delete_note",
-            "get_note_by_title",
+            "append_to_note",
+            "pin_note",
+            "archive_note",
+            "get_recent_notes",
             "list_tags",
             "create_tag",
-            "add_tag_to_note",
+            "delete_tag",
             "list_tasks",
             "create_task",
             "update_task",
+            "delete_task",
             "list_folders",
             "create_folder",
+            "delete_folder",
             "get_knowledge_graph",
             "search_vault_context",
             "get_vault_context",
             "export_vault",
             "get_note_with_connections",
-            "batch_create_notes"
+            "get_vault_summary",
+            "ai_chat",
+            "ai_summarize",
+            "ai_generate_tags",
+            "ai_suggest_links",
+            "list_templates",
+            "check_health"
           ]
         }
       }
@@ -47,7 +58,7 @@
             "list_notes",
             "get_note",
             "search_notes",
-            "get_note_by_title",
+            "get_recent_notes",
             "list_tags",
             "list_tasks",
             "list_folders",
@@ -55,7 +66,10 @@
             "search_vault_context",
             "get_vault_context",
             "export_vault",
-            "get_note_with_connections"
+            "get_note_with_connections",
+            "get_vault_summary",
+            "list_templates",
+            "check_health"
           ]
         }
       }

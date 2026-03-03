@@ -19,7 +19,7 @@ import type {
   StatusBarWidget,
   MarkdownProcessor,
   CodeBlockRenderer,
-  SAMTool,
+  AgentTool,
   TesserinPluginAPI,
   TesserinPlugin,
 } from "./types"
@@ -31,7 +31,7 @@ import type {
 /** All permissions — granted to built-in plugins automatically. */
 const ALL_PERMISSIONS: PluginPermission[] = [
   "vault:read", "vault:write", "settings:read", "settings:write",
-  "ui:notify", "commands", "panels", "sam:tools", "events",
+  "ui:notify", "commands", "panels", "agent:tools", "ai:access", "events",
 ]
 
 /** Simple per-plugin rate limiter: max `limit` calls per `windowMs`. */
@@ -122,7 +122,7 @@ interface RegistryState {
   statusBarWidgets: Map<string, StatusBarWidget & { pluginId: string }>
   markdownProcessors: Array<{ pluginId: string; processor: MarkdownProcessor }>
   codeBlockRenderers: Map<string, CodeBlockRenderer & { pluginId: string }>
-  samTools: Map<string, SAMTool & { pluginId: string }>
+  agentTools: Map<string, AgentTool & { pluginId: string }>
   eventListeners: Map<PluginEventType, Array<{ pluginId: string; handler: PluginEventHandler }>>
 }
 
@@ -134,7 +134,7 @@ class PluginRegistry {
     statusBarWidgets: new Map(),
     markdownProcessors: [],
     codeBlockRenderers: new Map(),
-    samTools: new Map(),
+    agentTools: new Map(),
     eventListeners: new Map(),
   }
 
@@ -193,6 +193,7 @@ class PluginRegistry {
     Object.freeze(api.vault)
     Object.freeze(api.settings)
     Object.freeze(api.ui)
+    Object.freeze(api.ai)
 
     try {
       await withTimeout(
@@ -229,8 +230,8 @@ class PluginRegistry {
     for (const [key, r] of this.state.codeBlockRenderers) {
       if (r.pluginId === pluginId) this.state.codeBlockRenderers.delete(key)
     }
-    for (const [key, t] of this.state.samTools) {
-      if (t.pluginId === pluginId) this.state.samTools.delete(key)
+    for (const [key, t] of this.state.agentTools) {
+      if (t.pluginId === pluginId) this.state.agentTools.delete(key)
     }
     for (const [, handlers] of this.state.eventListeners) {
       const idx = handlers.findIndex((h) => h.pluginId === pluginId)
@@ -276,9 +277,9 @@ class PluginRegistry {
     this.notify()
   }
 
-  addSAMTool(pluginId: string, tool: SAMTool) {
+  addAgentTool(pluginId: string, tool: AgentTool) {
     const key = `${pluginId}:${tool.name}`
-    this.state.samTools.set(key, { ...tool, pluginId })
+    this.state.agentTools.set(key, { ...tool, pluginId })
     this.notify()
   }
 
@@ -342,8 +343,8 @@ class PluginRegistry {
     return undefined
   }
 
-  getSAMTools(): Array<SAMTool & { pluginId: string }> {
-    return Array.from(this.state.samTools.values())
+  getAgentTools(): Array<AgentTool & { pluginId: string }> {
+    return Array.from(this.state.agentTools.values())
   }
 }
 
@@ -366,7 +367,7 @@ export function sandboxAPI(
     registerStatusBarWidget: guarded(pluginId, "panels", perms, rawApi.registerStatusBarWidget),
     registerMarkdownProcessor: guarded(pluginId, "panels", perms, rawApi.registerMarkdownProcessor),
     registerCodeBlockRenderer: guarded(pluginId, "panels", perms, rawApi.registerCodeBlockRenderer),
-    registerSAMTool: guarded(pluginId, "sam:tools", perms, rawApi.registerSAMTool),
+    registerAgentTool: guarded(pluginId, "agent:tools", perms, rawApi.registerAgentTool),
     on: guarded(pluginId, "events", perms, rawApi.on),
     off: guarded(pluginId, "events", perms, rawApi.off),
     vault: {
@@ -387,6 +388,7 @@ export function sandboxAPI(
       showNotice: guarded(pluginId, "ui:notify", perms, rawApi.ui.showNotice),
       navigateToTab: guarded(pluginId, "ui:notify", perms, rawApi.ui.navigateToTab),
     },
+    ai: rawApi.ai,
   }
 }
 

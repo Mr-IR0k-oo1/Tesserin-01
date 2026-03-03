@@ -34,7 +34,6 @@ const TAB_ANIM: Record<string, "bounce" | "wobble" | "pulse" | "morph"> = {
   notes: "bounce",
   canvas: "wobble",
   graph: "pulse",
-  sam: "morph",
   settings: "wobble",
 }
 
@@ -42,7 +41,6 @@ const CORE_TABS = [
   { id: "notes", icon: ScribbledNotes, label: "Notes" },
   { id: "canvas", icon: ScribbledCanvas, label: "Canvas" },
   { id: "graph", icon: ScribbledGraph, label: "Graph" },
-  { id: "sam", icon: ScribbledSparkles, label: "SAM" },
   { id: "settings", icon: ScribbledSettings, label: "Settings" },
 ] as const
 
@@ -59,7 +57,6 @@ interface LeftDockProps {
 const TAB_FEATURE_MAP: Record<string, string> = {
   canvas: "features.canvas",
   graph: "features.graph",
-  sam: "features.sam",
 }
 
 export function LeftDock({ activeTab, setActiveTab }: LeftDockProps) {

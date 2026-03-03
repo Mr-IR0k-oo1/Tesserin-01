@@ -6,11 +6,11 @@ import { SkeuoPanel } from "@/components/tesserin/core/skeuo-panel"
 import { LoadingScreen } from "@/components/tesserin/core/loading-screen"
 import { TitleBar } from "@/components/tesserin/core/title-bar"
 import { PluginProvider, StatusBar } from "@/components/tesserin/core/plugin-provider"
+import { OnboardingWelcome, useOnboarding, ONBOARDING_SAMPLE_CONTENT } from "@/components/tesserin/core/onboarding"
 
 // Panels
 import { LeftDock, type TabId } from "@/components/tesserin/panels/left-dock"
 import { NoteSidebar } from "@/components/tesserin/panels/note-sidebar"
-import { FloatingAIChat } from "@/components/tesserin/panels/floating-ai-chat"
 import { SearchPalette } from "@/components/tesserin/panels/search-palette"
 import { ExportPanel } from "@/components/tesserin/panels/export-panel"
 import { TemplateManager } from "@/components/tesserin/panels/template-manager"
@@ -23,11 +23,10 @@ import { MarkdownEditor } from "@/components/tesserin/workspace/markdown-editor"
 import { CreativeCanvas } from "@/components/tesserin/workspace/creative-canvas"
 import { CanvasSidebar } from "@/components/tesserin/workspace/canvas-sidebar"
 import { D3GraphView } from "@/components/tesserin/workspace/d3-graph-view"
-import { SAMNode } from "@/components/tesserin/workspace/sam-node"
 import { SplitPaneLayout, useSplitPanes, type ViewDefinition, type PaneRenderProps } from "@/components/tesserin/workspace/split-panes"
 import { SettingsPanel } from "@/components/tesserin/panels/settings-panel"
 import { FiFileText, FiCompass, FiSettings } from "react-icons/fi"
-import { HiOutlineCpuChip, HiOutlineSparkles } from "react-icons/hi2"
+import { HiOutlineCpuChip } from "react-icons/hi2"
 
 // Lazy import for quick capture overlay (not a core tab, just an overlay)
 const DailyNotes = React.lazy(() =>
@@ -106,7 +105,24 @@ function AppContent() {
     const [showReferences, setShowReferences] = useState(false)
     const [showQuickCapture, setShowQuickCapture] = useState(false)
     const [notice, setNotice] = useState<{ message: string; visible: boolean }>({ message: "", visible: false })
-    const { notes, selectedNoteId, selectNote } = useNotes()
+    const { notes, selectedNoteId, selectNote, addNote, updateNote, isLoading } = useNotes()
+
+    // Onboarding — shown once when vault is empty
+    const { showOnboarding, dismissOnboarding } = useOnboarding(notes.length, isLoading)
+
+    const handleOnboardingDone = useCallback(
+        (navigate?: "notes" | "graph" | "settings") => {
+            dismissOnboarding()
+            if (navigate === "notes") {
+                const id = addNote("Welcome to Tesserin ✦")
+                updateNote(id, { content: ONBOARDING_SAMPLE_CONTENT })
+                setActiveTab("notes")
+            } else if (navigate) {
+                setActiveTab(navigate as TabId)
+            }
+        },
+        [dismissOnboarding, addNote, updateNote],
+    )
     const { panels } = usePlugins()
     const canvasStore = useCanvasStore()
     const { splitState, openSplit, closeSplit, setSecondaryView, setSecondaryNote, toggleDirection } = useSplitPanes()
@@ -119,7 +135,6 @@ function AppContent() {
             { id: "notes", label: "Notes", icon: FiFileText },
             { id: "canvas", label: "Canvas", icon: FiCompass },
             { id: "graph", label: "Graph", icon: HiOutlineCpuChip },
-            { id: "sam", label: "SAM", icon: HiOutlineSparkles },
             { id: "settings", label: "Settings", icon: FiSettings },
         ]
         for (const p of panels.filter((pl) => pl.location === "workspace")) {
@@ -141,8 +156,6 @@ function AppContent() {
                 return <CreativeCanvas />
             case "graph":
                 return <D3GraphView />
-            case "sam":
-                return <SAMNode />
             case "settings":
                 return <SettingsPanel />
             default: {
@@ -158,7 +171,7 @@ function AppContent() {
     useEffect(() => {
         async function loadFeatures() {
             const keys = [
-                "features.floatingChat", "features.statusBar", "features.backlinks",
+                "features.statusBar", "features.backlinks",
                 "features.versionHistory", "features.references", "features.splitPanes",
                 "features.dailyNotes", "features.templates",
             ]
@@ -205,7 +218,6 @@ function AppContent() {
             case "open-split": openSplit(); break
             case "navigate-graph": setActiveTab("graph"); break
             case "navigate-canvas": setActiveTab("canvas"); break
-            case "navigate-sam": setActiveTab("sam"); break
             case "navigate-settings": setActiveTab("settings"); break
         }
     }, [openSplit])
@@ -344,9 +356,6 @@ function AppContent() {
                     <StatusBar activeTab={activeTab} onTipAction={handleTipAction} />
                 )}
 
-                {/* ── Floating AI Chat ── */}
-                {isFeatureEnabled("features.floatingChat") && <FloatingAIChat />}
-
                 {/* ── Notice Toast ── */}
                 {notice.visible && (
                     <div
@@ -395,6 +404,11 @@ function AppContent() {
                     <React.Suspense fallback={null}>
                         <DailyNotes quickCapture onClose={() => setShowQuickCapture(false)} />
                     </React.Suspense>
+                )}
+
+                {/* ── First-run onboarding ── */}
+                {showOnboarding && (
+                    <OnboardingWelcome onDone={handleOnboardingDone} />
                 )}
             </div>
         </PluginProvider>

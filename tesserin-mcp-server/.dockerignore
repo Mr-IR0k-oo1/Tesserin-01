@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.git/
+.gitignore
+.env
+.env.*
+node_modules/
+release/
+dist/
+build/
+*.md
+.tesserin-changelog/

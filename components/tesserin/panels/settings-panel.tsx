@@ -110,8 +110,6 @@ interface SettingsValues {
   // Features — toggle workspace tabs & panels on/off
   "features.canvas": string
   "features.graph": string
-  "features.sam": string
-  "features.floatingChat": string
   "features.statusBar": string
   "features.backlinks": string
   "features.versionHistory": string
@@ -163,8 +161,6 @@ const DEFAULTS: SettingsValues = {
 
   "features.canvas": "true",
   "features.graph": "true",
-  "features.sam": "true",
-  "features.floatingChat": "true",
   "features.statusBar": "true",
   "features.backlinks": "true",
   "features.versionHistory": "true",
@@ -180,21 +176,25 @@ const DEFAULTS: SettingsValues = {
 
 type SectionId = "general" | "editor" | "ai" | "mcp" | "api" | "agents" | "appearance" | "themes" | "vault" | "plugins" | "marketplace" | "features" | "shortcuts" | "about"
 
-const SECTIONS: { id: SectionId; label: string; icon: React.ReactNode }[] = [
-  { id: "general", label: "General", icon: <FiSettings size={16} /> },
-  { id: "editor", label: "Editor", icon: <FiEdit3 size={16} /> },
-  { id: "ai", label: "AI / SAM", icon: <HiOutlineCpuChip size={16} /> },
-  { id: "mcp", label: "MCP", icon: <FiLink size={16} /> },
-  { id: "api", label: "API", icon: <FiKey size={16} /> },
-  { id: "agents", label: "Cloud Agents", icon: <FiGlobe size={16} /> },
-  { id: "appearance", label: "Appearance", icon: <FiSun size={16} /> },
-  { id: "themes", label: "Themes", icon: <FiDroplet size={16} /> },
-  { id: "features", label: "Features", icon: <FiGrid size={16} /> },
-  { id: "vault", label: "Vault & Data", icon: <FiDatabase size={16} /> },
-  { id: "plugins", label: "Plugins", icon: <FiPackage size={16} /> },
-  { id: "marketplace", label: "Marketplace", icon: <FiGlobe size={16} /> },
-  { id: "shortcuts", label: "Shortcuts", icon: <FiCommand size={16} /> },
-  { id: "about", label: "About", icon: <FiInfo size={16} /> },
+const SECTIONS: { id: SectionId; label: string; icon: React.ReactNode; group?: string }[] = [
+  // ── Workspace ─────────────────────────────────────────────────────
+  { id: "general",     label: "General",       icon: <FiSettings size={16} />,      group: "Workspace" },
+  { id: "editor",      label: "Editor",        icon: <FiEdit3 size={16} /> },
+  { id: "appearance",  label: "Appearance",    icon: <FiSun size={16} /> },
+  { id: "themes",      label: "Themes",        icon: <FiDroplet size={16} /> },
+  { id: "features",    label: "Features",      icon: <FiGrid size={16} /> },
+  { id: "shortcuts",   label: "Shortcuts",     icon: <FiCommand size={16} /> },
+  // ── Intelligence ──────────────────────────────────────────────────
+  { id: "ai",          label: "AI",            icon: <HiOutlineCpuChip size={16} />, group: "Intelligence" },
+  { id: "plugins",     label: "Plugins",       icon: <FiPackage size={16} /> },
+  { id: "marketplace", label: "Marketplace",   icon: <FiGlobe size={16} /> },
+  // ── Connections ───────────────────────────────────────────────────
+  { id: "mcp",         label: "MCP Servers",   icon: <FiLink size={16} />,          group: "Connections" },
+  { id: "agents",      label: "Cloud Agents",  icon: <FiGlobe size={16} /> },
+  { id: "api",         label: "API Access",    icon: <FiKey size={16} /> },
+  // ── System ────────────────────────────────────────────────────────
+  { id: "vault",       label: "Vault & Data",  icon: <FiDatabase size={16} />,      group: "System" },
+  { id: "about",       label: "About",         icon: <FiInfo size={16} /> },
 ]
 
 /* ------------------------------------------------------------------ */
@@ -655,7 +655,6 @@ export function SettingsPanel() {
             { value: "notes", label: "Notes" },
             { value: "canvas", label: "Canvas" },
             { value: "graph", label: "Graph" },
-            { value: "sam", label: "SAM" },
           ]}
         />
       </SettingRow>
@@ -771,7 +770,7 @@ export function SettingsPanel() {
 
   const renderAI = () => (
     <div>
-      <SectionHeading title="AI / SAM" icon={<HiOutlineCpuChip size={16} />} />
+      <SectionHeading title="AI" icon={<HiOutlineCpuChip size={16} />} />
 
       {/* Connection status */}
       <div
@@ -1500,7 +1499,7 @@ export function SettingsPanel() {
         <div>
           <div className="text-lg font-bold tracking-wide" style={{ color: "var(--text-primary)" }}>Tesserin</div>
           <div className="text-[10px] font-mono" style={{ color: "var(--text-tertiary)" }}>
-            v1.0.0-beta · Electron + React + SQLite
+            v1.0.7 · Electron + React + SQLite
           </div>
           <div className="text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
             Premium knowledge management for power users
@@ -1526,7 +1525,7 @@ export function SettingsPanel() {
           { label: "Electron", value: typeof window !== "undefined" && window.tesserin ? "Active" : "Browser mode" },
           { label: "Storage", value: typeof window !== "undefined" && window.tesserin?.db ? "SQLite (WAL)" : "localStorage" },
           { label: "AI Backend", value: "Ollama (local)" },
-          { label: "Build Date", value: "February 2026" },
+          { label: "Build Date", value: "March 2026" },
         ].map((info) => (
           <div key={info.label} className="flex items-center justify-between">
             <span className="text-[10px] font-medium" style={{ color: "var(--text-tertiary)" }}>{info.label}</span>
@@ -1922,6 +1921,63 @@ export function SettingsPanel() {
             <div>POST /api/knowledge/search · GET /api/knowledge/export</div>
             <div>GET  /api/agents · POST /api/agents/register</div>
             <div>GET  /api/vault/summary · /api/health</div>
+          </div>
+        </div>
+
+        {/* Docker MCP quick-start */}
+        <div className="mt-5">
+          <div
+            className="text-[10px] font-semibold uppercase tracking-wider mb-2"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            DOCKER MCP SERVER
+          </div>
+          <div
+            className="p-3.5 rounded-xl space-y-2.5"
+            style={{
+              background: "var(--bg-panel-inset)",
+              boxShadow: "var(--input-inner-shadow)",
+              border: "1px solid var(--border-dark)",
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <FiPackage size={12} style={{ color: "var(--accent-primary)" }} />
+              <span className="text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                mcp/tesserin
+              </span>
+              <span
+                className="text-[9px] px-1.5 py-0.5 rounded font-mono"
+                style={{
+                  backgroundColor: "var(--bg-panel)",
+                  color: "var(--text-tertiary)",
+                  border: "1px solid var(--border-dark)",
+                }}
+              >
+                Docker MCP Registry
+              </span>
+            </div>
+            <div className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+              Run the Tesserin MCP server in Docker to connect AI agents (Claude Desktop, VS Code
+              Copilot, Cursor) to your vault without installing Python.
+            </div>
+            <code
+              className="block p-2.5 rounded-lg font-mono text-[9px] whitespace-pre select-all leading-relaxed"
+              style={{ backgroundColor: "var(--bg-panel)", color: "var(--accent-primary)" }}
+            >{`docker run --rm \\
+  --add-host=host.docker.internal:host-gateway \\
+  -e TESSERIN_API_TOKEN=${
+    apiKeys.find((k) => !k.is_revoked)?.prefix
+      ? apiKeys.find((k) => !k.is_revoked)!.prefix + "…"
+      : "YOUR_API_TOKEN"
+  } \\
+  -e TESSERIN_API_URL=http://host.docker.internal:9960 \\
+  mcp/tesserin`}</code>
+            <div className="text-[9px]" style={{ color: "var(--text-tertiary)" }}>
+              Requires the API server running on port {apiServerStatus.port}.{" "}
+              {apiKeys.filter((k) => !k.is_revoked).length === 0
+                ? "Generate an API key above first."
+                : `Using key prefix: ${apiKeys.find((k) => !k.is_revoked)?.prefix}…`}
+            </div>
           </div>
         </div>
       </div>
@@ -2453,8 +2509,6 @@ curl http://127.0.0.1:${apiServerStatus.port}/api/knowledge/graph \\
     const FEATURE_ITEMS: { key: SettingKey; label: string; description: string; icon: React.ReactNode }[] = [
       { key: "features.canvas", label: "Canvas", description: "Infinite whiteboard for visual thinking and diagrams.", icon: <FiCompass size={14} /> },
       { key: "features.graph", label: "Graph View", description: "Interactive knowledge graph visualizing note connections.", icon: <HiOutlineCpuChip size={14} /> },
-      { key: "features.sam", label: "SAM (AI Assistant)", description: "AI-powered assistant for writing, summarizing, and brainstorming.", icon: <HiOutlineSparkles size={14} /> },
-      { key: "features.floatingChat", label: "Floating AI Chat", description: "Quick-access AI chat bubble in the bottom-right corner.", icon: <HiOutlineSparkles size={14} /> },
       { key: "features.statusBar", label: "Status Bar", description: "Bottom bar showing tips and plugin widgets.", icon: <FiMonitor size={14} /> },
       { key: "features.backlinks", label: "Backlinks Panel", description: "See which notes link to the current note.", icon: <FiLink size={14} /> },
       { key: "features.versionHistory", label: "Version History", description: "Track and restore previous versions of notes.", icon: <FiClock size={14} /> },
@@ -2544,7 +2598,7 @@ curl http://127.0.0.1:${apiServerStatus.port}/api/knowledge/graph \\
           }}
         >
           <strong style={{ color: "var(--text-secondary)" }}>Tip:</strong> Disabling a tab (e.g. Canvas, Graph) removes it from the left dock.
-          Disabling overlays (e.g. Floating Chat, Templates) hides their UI. You can re-enable everything at any time.
+          Disabling overlays (e.g. Templates, References) hides their UI. You can re-enable everything at any time.
         </div>
       </div>
     )
@@ -2593,21 +2647,31 @@ curl http://127.0.0.1:${apiServerStatus.port}/api/knowledge/graph \\
         </div>
 
         {/* Section list */}
-        <nav className="flex-1 overflow-y-auto custom-scrollbar px-3 py-3 space-y-1">
+        <nav className="flex-1 overflow-y-auto custom-scrollbar px-3 py-2">
           {SECTIONS.map((section) => (
-            <button
-              key={section.id}
-              onClick={() => setActiveSection(section.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150 ${activeSection === section.id ? "" : "hover:brightness-110"
-                }`}
-              style={{
-                background: activeSection === section.id ? "var(--accent-primary)" : "transparent",
-                color: activeSection === section.id ? "var(--text-on-accent)" : "var(--text-secondary)",
-              }}
-            >
-              <span className="shrink-0">{section.icon}</span>
-              <span className="text-xs font-medium">{section.label}</span>
-            </button>
+            <React.Fragment key={section.id}>
+              {section.group && (
+                <div className="px-2 pt-4 pb-1">
+                  <span
+                    className="text-[9px] font-bold uppercase tracking-widest select-none"
+                    style={{ color: "var(--text-tertiary)", opacity: 0.45 }}
+                  >
+                    {section.group}
+                  </span>
+                </div>
+              )}
+              <button
+                onClick={() => setActiveSection(section.id)}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all duration-150 mb-0.5 ${activeSection === section.id ? "" : "hover:brightness-110"}`}
+                style={{
+                  background: activeSection === section.id ? "var(--accent-primary)" : "transparent",
+                  color: activeSection === section.id ? "var(--text-on-accent)" : "var(--text-secondary)",
+                }}
+              >
+                <span className="shrink-0">{section.icon}</span>
+                <span className="text-xs font-medium">{section.label}</span>
+              </button>
+            </React.Fragment>
           ))}
         </nav>
 

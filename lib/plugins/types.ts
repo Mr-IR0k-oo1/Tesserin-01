@@ -46,7 +46,8 @@ export type PluginPermission =
   | "ui:notify"        // show notices / navigate tabs
   | "commands"         // register commands
   | "panels"           // register panels
-  | "sam:tools"        // register SAM tools
+  | "agent:tools"      // register agent tools
+  | "ai:access"        // use the local AI (Ollama / OpenRouter)
   | "events"           // subscribe to events
 
 /** Events plugins can subscribe to */
@@ -125,11 +126,11 @@ export interface CodeBlockRenderer {
   component: React.ComponentType<{ code: string }>
 }
 
-/** A SAM tool that plugins can register */
-export interface SAMTool {
+/** An agent tool that plugins can register to extend AI capabilities */
+export interface AgentTool {
   /** Tool name, e.g. "web-search" */
   name: string
-  /** Short description shown to SAM in context */
+  /** Short description shown to the AI agent in context */
   description: string
   /** Parameter schema */
   parameters?: Record<string, { type: string; description: string; required?: boolean }>
@@ -152,8 +153,8 @@ export interface TesserinPluginAPI {
   registerMarkdownProcessor(processor: MarkdownProcessor): void
   /** Register a custom code-block renderer */
   registerCodeBlockRenderer(renderer: CodeBlockRenderer): void
-  /** Register a SAM tool */
-  registerSAMTool(tool: SAMTool): void
+  /** Register an agent tool (available to SAM and external AI agents) */
+  registerAgentTool(tool: AgentTool): void
   /** Subscribe to plugin events */
   on(event: PluginEventType, handler: PluginEventHandler): void
   /** Unsubscribe from events */
@@ -181,6 +182,23 @@ export interface TesserinPluginAPI {
   ui: {
     showNotice(message: string, duration?: number): void
     navigateToTab(tabId: string): void
+  }
+
+  /** Local AI access (Ollama / OpenRouter). Requires "ai:access" permission. */
+  ai: {
+    chat(messages: Array<{ role: string; content: string }>, model?: string): Promise<string>
+    stream(
+      messages: Array<{ role: string; content: string }>,
+      onChunk: (chunk: string) => void,
+      onDone: () => void,
+      onError: (error: string) => void,
+      model?: string,
+    ): { cancel(): void }
+    summarize(text: string, model?: string): Promise<string>
+    generateTags(text: string, model?: string): Promise<string[]>
+    suggestLinks(content: string, existingTitles: string[], model?: string): Promise<string[]>
+    checkConnection(): Promise<{ connected: boolean; version?: string }>
+    listModels(): Promise<string[]>
   }
 }
 

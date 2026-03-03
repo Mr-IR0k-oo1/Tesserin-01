@@ -17,7 +17,7 @@ export type {
   StatusBarWidget,
   MarkdownProcessor,
   CodeBlockRenderer,
-  SAMTool,
+  AgentTool,
   TesserinPluginAPI,
   TesserinPlugin,
 } from "./types"

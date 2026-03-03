@@ -70,7 +70,7 @@ export function PluginProvider({ children, onNotice, onNavigateTab }: PluginProv
       registerStatusBarWidget: (widget) => pluginRegistry.addStatusBarWidget(pluginId, widget),
       registerMarkdownProcessor: (proc) => pluginRegistry.addMarkdownProcessor(pluginId, proc),
       registerCodeBlockRenderer: (renderer) => pluginRegistry.addCodeBlockRenderer(pluginId, renderer),
-      registerSAMTool: (tool) => pluginRegistry.addSAMTool(pluginId, tool),
+      registerAgentTool: (tool) => pluginRegistry.addAgentTool(pluginId, tool),
 
       on: (event, handler) => pluginRegistry.addEventListener(pluginId, event, handler),
       off: (event, handler) => pluginRegistry.removeEventListener(pluginId, event, handler),
@@ -137,6 +137,42 @@ export function PluginProvider({ children, onNotice, onNavigateTab }: PluginProv
         },
         navigateToTab: (tabId) => {
           onNavigateTab?.(tabId)
+        },
+      },
+
+      ai: {
+        chat: (messages, model) => {
+          const t = (window as any).tesserin
+          return t ? t.ai.chat(messages, model) : Promise.reject(new Error("AI not available"))
+        },
+        stream: (messages, onChunk, onDone, onError, model) => {
+          const t = (window as any).tesserin
+          if (!t) { onError("AI not available"); return { cancel: () => {} } }
+          const s = t.ai.chatStream(messages, model)
+          s.onChunk(onChunk)
+          s.onDone(onDone)
+          s.onError(onError)
+          return { cancel: s.cancel }
+        },
+        summarize: (text, model) => {
+          const t = (window as any).tesserin
+          return t ? t.ai.summarize(text, model) : Promise.reject(new Error("AI not available"))
+        },
+        generateTags: (text, model) => {
+          const t = (window as any).tesserin
+          return t ? t.ai.generateTags(text, model) : Promise.reject(new Error("AI not available"))
+        },
+        suggestLinks: (content, existingTitles, model) => {
+          const t = (window as any).tesserin
+          return t ? t.ai.suggestLinks(content, existingTitles, model) : Promise.reject(new Error("AI not available"))
+        },
+        checkConnection: () => {
+          const t = (window as any).tesserin
+          return t ? t.ai.checkConnection() : Promise.resolve({ connected: false })
+        },
+        listModels: () => {
+          const t = (window as any).tesserin
+          return t ? t.ai.listModels() : Promise.resolve([])
         },
       },
     }
@@ -225,13 +261,13 @@ export function PluginProvider({ children, onNotice, onNavigateTab }: PluginProv
         // so we re-register all MCP tools on each change
       }
 
-      // Register all MCP tools as SAM tools
+      // Register all MCP tools as agent tools
       currentToolNames = []
       for (const tool of state.tools) {
-        const samToolName = `mcp:${tool.serverName}:${tool.name}`
-        currentToolNames.push(samToolName)
+        const agentToolName = `mcp:${tool.serverName}:${tool.name}`
+        currentToolNames.push(agentToolName)
 
-        // Convert MCP input schema to SAM parameter format
+        // Convert MCP input schema to AgentTool parameter format
         const parameters: Record<string, { type: string; description: string; required?: boolean }> = {}
         const schema = tool.inputSchema as {
           properties?: Record<string, { type?: string; description?: string }>
@@ -247,8 +283,8 @@ export function PluginProvider({ children, onNotice, onNavigateTab }: PluginProv
           }
         }
 
-        pluginRegistry.addSAMTool(MCP_PLUGIN_ID, {
-          name: samToolName,
+        pluginRegistry.addAgentTool(MCP_PLUGIN_ID, {
+          name: agentToolName,
           description: `[${tool.serverName}] ${tool.description}`,
           parameters,
           execute: async (params) => {

@@ -94,7 +94,7 @@ export const COMMUNITY_PLUGINS: TesserinPlugin[] = [
 | `ui:notify`       | Show toast notifications, navigate tabs  |
 | `commands`        | Register command-palette entries          |
 | `panels`          | Register sidebar / workspace panels      |
-| `sam:tools`       | Register SAM (AI assistant) tools        |
+| `agent:tools`     | Register agent tools (available to SAM and external AI agents) |
 | `events`          | Subscribe to note lifecycle events       |
 
 Only request the permissions your plugin actually needs — the sandbox enforces
