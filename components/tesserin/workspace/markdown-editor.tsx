@@ -93,11 +93,12 @@ export function MarkdownEditor({ noteId: propsNoteId, onSelectNote, isSecondary 
   const handleAddNote = useCallback(() => {
     if (isSecondary) {
       const id = addNote(undefined, undefined, undefined, false)
-      setSecondaryNoteId(id)
+      // effectiveSelectNote updates both local state AND parent splitState.secondaryNoteId
+      effectiveSelectNote(id)
     } else {
       addNote() // default autoSelect=true, handled inside the store
     }
-  }, [addNote, isSecondary])
+  }, [addNote, isSecondary, effectiveSelectNote])
 
   const [viewMode, setViewMode] = useState<"edit" | "preview" | "split">("split")
   const [showNoteList, setShowNoteList] = useState(false)
@@ -172,6 +173,61 @@ export function MarkdownEditor({ noteId: propsNoteId, onSelectNote, isSecondary 
 
   /* ---- Empty state ---- */
   if (!selectedNote) {
+    // Secondary pane: show a note list so the user can pick or create.
+    // There is no left-dock overlay here, so pl-4 (not pl-20).
+    if (isSecondary) {
+      return (
+        <div className="flex flex-col h-full">
+          <div
+            className="h-10 border-b flex items-center px-3 justify-between shrink-0"
+            style={{ borderColor: "var(--border-dark)", background: "var(--bg-panel)" }}
+          >
+            <div className="flex items-center gap-2">
+              <FiFileText size={13} style={{ color: "var(--text-tertiary)" }} />
+              <span className="text-xs font-semibold tracking-wide uppercase" style={{ color: "var(--text-tertiary)" }}>
+                Notes
+              </span>
+            </div>
+            <button
+              onClick={handleAddNote}
+              className="skeuo-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold"
+            >
+              <FiPlus size={12} />
+              New
+            </button>
+          </div>
+          {notes.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center">
+              <button
+                onClick={handleAddNote}
+                className="skeuo-btn px-4 py-2.5 rounded-xl text-sm font-semibold"
+              >
+                <FiPlus size={13} className="inline mr-1.5" />
+                Create Note
+              </button>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+              {notes.map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => effectiveSelectNote(n.id)}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors duration-150"
+                  style={{ color: "var(--text-secondary)", backgroundColor: "transparent" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--bg-panel-inset)" }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                >
+                  <FiFileText size={13} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
+                  <span className="truncate">{n.title}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    // Primary pane: centered design
     return (
       <div className="flex flex-col h-full">
         {/* Header */}
@@ -227,7 +283,7 @@ export function MarkdownEditor({ noteId: propsNoteId, onSelectNote, isSecondary 
     <div className="flex flex-col h-full">
       {/* Toolbar */}
       <div
-        className="h-12 border-b flex items-center pl-20 pr-4 gap-2 shrink-0"
+        className={`h-12 border-b flex items-center ${isSecondary ? 'pl-3' : 'pl-20'} pr-4 gap-2 shrink-0`}
         style={{ borderColor: "var(--border-dark)", background: "var(--bg-panel)" }}
       >
         {/* Note switcher */}
@@ -283,23 +339,27 @@ export function MarkdownEditor({ noteId: propsNoteId, onSelectNote, isSecondary 
           )}
         </div>
 
-        <SkeuoBadge>
-          {backlinks.length} backlink{backlinks.length !== 1 ? "s" : ""}
-        </SkeuoBadge>
+        {!isSecondary && (
+          <SkeuoBadge>
+            {backlinks.length} backlink{backlinks.length !== 1 ? "s" : ""}
+          </SkeuoBadge>
+        )}
 
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Stats badge */}
-        <span
-          className="hidden sm:flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-md mr-1"
-          style={{ color: "var(--text-tertiary)", backgroundColor: "var(--bg-panel-inset)" }}
-        >
-          {stats.words} words · {stats.readMin} min read
-        </span>
+        {/* Stats badge — hidden in secondary pane to save space */}
+        {!isSecondary && (
+          <span
+            className="hidden sm:flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-md mr-1"
+            style={{ color: "var(--text-tertiary)", backgroundColor: "var(--bg-panel-inset)" }}
+          >
+            {stats.words} words · {stats.readMin} min read
+          </span>
+        )}
 
-        {/* Last modified */}
-        {selectedNote.updatedAt && (
+        {/* Last modified — hidden in secondary pane */}
+        {!isSecondary && selectedNote.updatedAt && (
           <span
             className="hidden md:flex items-center gap-1 text-[10px] mr-1"
             style={{ color: "var(--text-tertiary)" }}
