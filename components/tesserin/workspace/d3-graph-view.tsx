@@ -222,28 +222,6 @@ function createGoldenDefs(
   textMerge.append("feMergeNode").attr("in", "shadow")
   textMerge.append("feMergeNode").attr("in", "SourceGraphic")
 
-  /* Warm ambient radial gradient (obsidian vignetting) */
-  const radialGrad = defs
-    .append("radialGradient")
-    .attr("id", "graph-ambience")
-    .attr("cx", "50%")
-    .attr("cy", "50%")
-    .attr("r", "60%")
-  radialGrad
-    .append("stop")
-    .attr("offset", "0%")
-    .attr("stop-color", "#050505")
-    .attr("stop-opacity", "0")
-  radialGrad
-    .append("stop")
-    .attr("offset", "70%")
-    .attr("stop-color", "#050505")
-    .attr("stop-opacity", "0.05")
-  radialGrad
-    .append("stop")
-    .attr("offset", "100%")
-    .attr("stop-color", "#050505")
-    .attr("stop-opacity", "0.15")
 }
 
 /* ------------------------------------------------------------------ */
@@ -395,15 +373,6 @@ export function D3GraphView() {
         svg.call(zoom.transform, t)
       }
     }
-
-    // Ambient background glow
-    g.append("rect")
-      .attr("x", -width * 2)
-      .attr("y", -height * 2)
-      .attr("width", width * 5)
-      .attr("height", height * 5)
-      .attr("fill", "url(#graph-ambience)")
-      .style("pointer-events", "none")
 
     /* ---- Shared rendering helpers ---- */
 
@@ -1014,7 +983,6 @@ export function D3GraphView() {
       <div
         ref={containerRef}
         className="flex-1 relative overflow-hidden"
-        style={{ backgroundColor: "var(--bg-app)" }}
         onMouseMove={(e) => {
           const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
           setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
