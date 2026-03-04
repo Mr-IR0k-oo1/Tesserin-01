@@ -37,9 +37,23 @@ function resolveIconPath(): string {
 }
 const iconPath = resolveIconPath()
 
-// If launched with --mcp flag, run as MCP server on stdio and exit
-if (process.argv.includes('--mcp')) {
-  startMcpServerStdio().catch((err) => {
+// If launched with --mcp flag, run as MCP server on stdio only.
+// We defer to app.whenReady() so Electron's user-data path is resolved
+// before initDatabase() picks a storage directory, then start the server.
+// The normal window / IPC-handler setup is skipped entirely in this mode
+// so Electron never writes to stdout and corrupts the MCP stdio stream.
+const isMcpMode = process.argv.includes('--mcp')
+if (isMcpMode) {
+  app.whenReady().then(async () => {
+    try {
+      initDatabase()
+    } catch (err) {
+      console.error('[Tesserin] Failed to initialize database for MCP server:', err)
+    }
+    await startMcpServerStdio()
+    // Keep the process alive until the MCP client closes stdin.
+    process.stdin.on('close', () => process.exit(0))
+  }).catch((err) => {
     console.error('[Tesserin] Failed to start MCP server:', err)
     process.exit(1)
   })
@@ -124,6 +138,10 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // MCP mode: database and server are managed in the isMcpMode block above.
+  // Nothing else (window, IPC handlers, shortcuts) is needed.
+  if (isMcpMode) return
+
   // Set application icon — on Linux this updates the dock/taskbar icon
   // (BrowserWindow.icon alone doesn't reach the taskbar on GNOME/Wayland)
   // app.setIcon() is only available on Linux
