@@ -311,7 +311,7 @@ export function MarkdownEditor({ noteId: propsNoteId, onSelectNote, isSecondary,
             <FiMenu size={13} style={{ color: showSidebar ? "var(--accent-primary)" : "var(--text-tertiary)" }} />
           </button>
         )}
-        {/* Note switcher */}}
+        {/* Note switcher */}
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setShowNoteList(!showNoteList)}
