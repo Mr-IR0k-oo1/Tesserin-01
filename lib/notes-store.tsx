@@ -246,10 +246,10 @@ export function NotesProvider({ children }: NotesProviderProps) {
     setNotes((prev) => [newNote, ...prev])
     if (autoSelect) setSelectedNoteId(id)
 
-    // Persist to SQLite — let the DB create the row, then update local ID if needed
-    storage.createNote({ title: noteTitle, content: noteContent, folderId: folderId || undefined }).then((dbNote) => {
+    // Persist to SQLite — pass the already-generated id so DB never assigns a different one
+    storage.createNote({ id, title: noteTitle, content: noteContent, folderId: folderId || undefined }).then((dbNote) => {
       if (dbNote?.id && dbNote.id !== id) {
-        // Replace the temp ID with the real DB-assigned ID
+        // Fallback: DB assigned a different id anyway — keep in sync
         setNotes((prev) =>
           prev.map((n) =>
             n.id === id
