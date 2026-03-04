@@ -275,16 +275,31 @@ export function CreativeCanvas({ onSplitOpen, paneId = "primary" }: { onSplitOpe
   const { notes } = useNotes()
   const {
     canvases,
-    activeCanvasId,
+    activeCanvasId: globalActiveCanvasId,
     isLoading: canvasListLoading,
     loadCanvases,
     createCanvas,
     deleteCanvas,
     renameCanvas,
     duplicateCanvas,
-    setActiveCanvas,
+    setActiveCanvas: globalSetActiveCanvas,
     touchCanvas,
   } = useCanvasStore()
+
+  // ── Per-pane canvas selection isolation ────────────────────────────────────
+  // Both panes share the global store, but writing activeCanvasId there makes
+  // the other pane jump to the same canvas. The secondary pane keeps its own
+  // local selection so the two panes are fully independent.
+  const [localCanvasId, setLocalCanvasId] = useState<string | null>(null)
+  const isSecondaryPane = paneId !== "primary"
+  // Shadow the global names — all existing code in this component uses these
+  // and automatically gets per-pane isolation for free.
+  const activeCanvasId = isSecondaryPane ? localCanvasId : globalActiveCanvasId
+  const setActiveCanvas = useCallback((id: string | null) => {
+    if (isSecondaryPane) setLocalCanvasId(id)
+    else globalSetActiveCanvas(id)
+  }, [isSecondaryPane, globalSetActiveCanvas])
+
   const apiRef = useRef<any>(null)
   const canvasIdRef = useRef<string | null>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -397,6 +412,15 @@ export function CreativeCanvas({ onSplitOpen, paneId = "primary" }: { onSplitOpe
       await deleteCanvas(id)
     },
     [deleteCanvas],
+  )
+
+  /** Duplicate a canvas; for the secondary pane, select locally not globally. */
+  const handleDuplicateCanvas = useCallback(
+    async (id: string) => {
+      const newId = await duplicateCanvas(id, !isSecondaryPane)
+      if (isSecondaryPane) setLocalCanvasId(newId)
+    },
+    [duplicateCanvas, isSecondaryPane],
   )
 
   /** Insert a note as a card onto the canvas */
@@ -1020,7 +1044,7 @@ export function CreativeCanvas({ onSplitOpen, paneId = "primary" }: { onSplitOpe
         onCreate={handleCreateCanvas}
         onClose={handleCloseCanvas}
         onRename={renameCanvas}
-        onDuplicate={duplicateCanvas}
+        onDuplicate={handleDuplicateCanvas}
         onDelete={deleteCanvas}
       />
 
