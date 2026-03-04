@@ -28,10 +28,10 @@ Knowledge graphs · Reference manager · Block references · AI chat · Canvas �
 
 | Platform | Download | Format |
 |----------|----------|--------|
-| <img src="https://img.shields.io/badge/Windows-0078D4?style=flat-square&logo=windows11&logoColor=white" /> | [**Tesserin-Setup.exe**](https://github.com/AnvinX1/Tesserin-pro/releases/latest/download/Tesserin+Setup+1.1.7.exe) | NSIS installer |
-| <img src="https://img.shields.io/badge/macOS-000000?style=flat-square&logo=apple&logoColor=white" /> | [**Tesserin.dmg**](https://github.com/AnvinX1/Tesserin-pro/releases/latest/download/Tesserin-1.1.7.dmg) | Disk image |
-| <img src="https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=black" /> | [**Tesserin.AppImage**](https://github.com/AnvinX1/Tesserin-pro/releases/latest/download/Tesserin-1.1.7.AppImage) | Portable |
-| <img src="https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=black" /> | [**Tesserin.deb**](https://github.com/AnvinX1/Tesserin-pro/releases/latest/download/tesserin_1.1.7_amd64.deb) | Debian/Ubuntu |
+| <img src="https://img.shields.io/badge/Windows-0078D4?style=flat-square&logo=windows11&logoColor=white" /> | [**Tesserin-Setup.exe**](https://github.com/AnvinX1/Tesserin-pro/releases/download/v1.0.1/Tesserin.Setup.1.0.0.exe) | NSIS installer |
+| <img src="https://img.shields.io/badge/macOS-000000?style=flat-square&logo=apple&logoColor=white" /> | [**Tesserin.dmg (arm64)**](https://github.com/AnvinX1/Tesserin-pro/releases/download/v1.0.1/Tesserin-1.0.0-arm64.dmg) | Disk image |
+| <img src="https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=black" /> | [**Tesserin.AppImage**](https://github.com/AnvinX1/Tesserin-pro/releases/download/v1.0.1/Tesserin-1.0.0.AppImage) | Portable |
+| <img src="https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=black" /> | [**Tesserin.deb**](https://github.com/AnvinX1/Tesserin-pro/releases/download/v1.0.1/tesserin_1.0.0_amd64.deb) | Debian/Ubuntu |
 
 </div>
 

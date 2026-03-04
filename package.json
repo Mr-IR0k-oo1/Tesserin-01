@@ -35,20 +35,6 @@
       "dist/**/*",
       "electron/dist/**/*"
     ],
-    "extraResources": [
-      {
-        "from": "build/icon.png",
-        "to": "icon.png"
-      },
-      {
-        "from": "build/icon.ico",
-        "to": "icon.ico"
-      },
-      {
-        "from": "build/icon.icns",
-        "to": "icon.icns"
-      }
-    ],
     "icon": "build/icons",
     "mac": {
       "category": "public.app-category.productivity",
@@ -139,6 +125,7 @@
     "embla-carousel-react": "8.6.0",
     "input-otp": "1.4.2",
     "lottie-web": "^5.13.0",
+    "lucide-react": "^0.576.0",
     "mermaid": "^11.12.2",
     "pptxgenjs": "^4.0.1",
     "react": "19.2.4",

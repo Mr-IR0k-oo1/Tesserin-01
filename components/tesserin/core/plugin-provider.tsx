@@ -325,7 +325,7 @@ export function StatusBar({ activeTab, onTipAction }: StatusBarProps) {
   const [currentTip, setCurrentTip] = useState<TesserinTip | null>(null)
   const [tipFading, setTipFading] = useState(false)
   const shownTips = useRef(new Set<string>())
-  const tipTimerRef = useRef<ReturnType<typeof setInterval>>()
+  const tipTimerRef = useRef<ReturnType<typeof setInterval>>(undefined)
 
   const leftWidgets = statusBarWidgets.filter((w) => (w.align ?? "left") === "left")
   const centerWidgets = statusBarWidgets.filter((w) => w.align === "center")
