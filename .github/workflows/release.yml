@@ -87,10 +87,12 @@ jobs:
       - name: Build Electron main process
         run: pnpm tsc -p electron/tsconfig.json
 
+      - name: Clean output directory
+        run: rm -rf release/
+
       - name: Package Electron app
         run: pnpm electron-builder --${{ matrix.platform }} --publish never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
