@@ -7,89 +7,89 @@
 declare const tesserinAPI: {
     db: {
         notes: {
-            list: () => Promise<any>;
-            get: (id: string) => Promise<any>;
+            list: () => any;
+            get: (id: string) => any;
             create: (data: {
                 title?: string;
                 content?: string;
                 folderId?: string;
-            }) => Promise<any>;
+            }) => any;
             update: (id: string, data: {
                 title?: string;
                 content?: string;
                 folderId?: string;
                 isPinned?: boolean;
-            }) => Promise<any>;
-            delete: (id: string) => Promise<any>;
-            search: (query: string) => Promise<any>;
-            getByTitle: (title: string) => Promise<any>;
+            }) => any;
+            delete: (id: string) => any;
+            search: (query: string) => any;
+            getByTitle: (title: string) => any;
         };
         tags: {
-            list: () => Promise<any>;
-            create: (name: string, color?: string) => Promise<any>;
-            delete: (id: string) => Promise<any>;
-            addToNote: (noteId: string, tagId: string) => Promise<any>;
-            removeFromNote: (noteId: string, tagId: string) => Promise<any>;
-            getForNote: (noteId: string) => Promise<any>;
+            list: () => any;
+            create: (name: string, color?: string) => any;
+            delete: (id: string) => any;
+            addToNote: (noteId: string, tagId: string) => any;
+            removeFromNote: (noteId: string, tagId: string) => any;
+            getForNote: (noteId: string) => any;
         };
         folders: {
-            list: () => Promise<any>;
-            create: (name: string, parentId?: string) => Promise<any>;
-            rename: (id: string, name: string) => Promise<any>;
-            delete: (id: string) => Promise<any>;
+            list: () => any;
+            create: (name: string, parentId?: string) => any;
+            rename: (id: string, name: string) => any;
+            delete: (id: string) => any;
         };
         tasks: {
-            list: () => Promise<any>;
+            list: () => any;
             create: (data: {
                 title: string;
                 noteId?: string;
                 columnId?: string;
                 priority?: number;
                 dueDate?: string;
-            }) => Promise<any>;
-            update: (id: string, data: Record<string, unknown>) => Promise<any>;
-            delete: (id: string) => Promise<any>;
+            }) => any;
+            update: (id: string, data: Record<string, unknown>) => any;
+            delete: (id: string) => any;
         };
         templates: {
-            list: () => Promise<any>;
-            get: (id: string) => Promise<any>;
+            list: () => any;
+            get: (id: string) => any;
             create: (data: {
                 name: string;
                 content: string;
                 category?: string;
-            }) => Promise<any>;
-            delete: (id: string) => Promise<any>;
+            }) => any;
+            delete: (id: string) => any;
         };
         settings: {
-            get: (key: string) => Promise<any>;
-            set: (key: string, value: string) => Promise<any>;
-            getAll: () => Promise<any>;
+            get: (key: string) => any;
+            set: (key: string, value: string) => any;
+            getAll: () => any;
         };
         canvases: {
-            list: () => Promise<any>;
-            get: (id: string) => Promise<any>;
+            list: () => any;
+            get: (id: string) => any;
             create: (data: {
                 id?: string;
                 name?: string;
                 elements?: string;
                 appState?: string;
                 files?: string;
-            }) => Promise<any>;
+            }) => any;
             update: (id: string, data: {
                 name?: string;
                 elements?: string;
                 appState?: string;
                 files?: string;
-            }) => Promise<any>;
-            delete: (id: string) => Promise<any>;
+            }) => any;
+            delete: (id: string) => any;
         };
-        clear: () => Promise<any>;
+        clear: () => any;
     };
     ai: {
         chat: (messages: Array<{
             role: string;
             content: string;
-        }>, model?: string) => Promise<any>;
+        }>, model?: string) => any;
         chatStream: (messages: Array<{
             role: string;
             content: string;
@@ -99,11 +99,11 @@ declare const tesserinAPI: {
             onError: (callback: (error: string) => void) => void;
             cancel: () => void;
         };
-        summarize: (text: string, model?: string) => Promise<any>;
-        generateTags: (text: string, model?: string) => Promise<any>;
-        suggestLinks: (content: string, existingTitles: string[], model?: string) => Promise<any>;
-        checkConnection: () => Promise<any>;
-        listModels: () => Promise<any>;
+        summarize: (text: string, model?: string) => any;
+        generateTags: (text: string, model?: string) => any;
+        suggestLinks: (content: string, existingTitles: string[], model?: string) => any;
+        checkConnection: () => any;
+        listModels: () => any;
         openRouterStream: (messages: Array<{
             role: string;
             content: string;
@@ -113,13 +113,13 @@ declare const tesserinAPI: {
             onError: (callback: (error: string) => void) => void;
             cancel: () => void;
         };
-        listOpenRouterModels: (apiKey?: string) => Promise<any>;
+        listOpenRouterModels: (apiKey?: string) => any;
     };
     window: {
-        minimize: () => void;
-        maximize: () => void;
-        close: () => void;
-        isMaximized: () => Promise<any>;
+        minimize: () => any;
+        maximize: () => any;
+        close: () => any;
+        isMaximized: () => any;
     };
     mcp: {
         connect: (config: {
@@ -131,12 +131,12 @@ declare const tesserinAPI: {
             env?: Record<string, string>;
             url?: string;
             enabled: boolean;
-        }) => Promise<any>;
-        disconnect: (serverId: string) => Promise<any>;
-        callTool: (serverId: string, toolName: string, args: Record<string, unknown>) => Promise<any>;
-        getStatuses: () => Promise<any>;
-        getTools: () => Promise<any>;
-        getServerTools: (serverId: string) => Promise<any>;
+        }) => any;
+        disconnect: (serverId: string) => any;
+        callTool: (serverId: string, toolName: string, args: Record<string, unknown>) => any;
+        getStatuses: () => any;
+        getTools: () => any;
+        getServerTools: (serverId: string) => any;
     };
     fs: {
         readDir: (dirPath: string) => Promise<Array<{
@@ -145,7 +145,7 @@ declare const tesserinAPI: {
             isDirectory: boolean;
         }>>;
         readFile: (filePath: string) => Promise<string>;
-        writeFile: (filePath: string, content: string) => Promise<any>;
+        writeFile: (filePath: string, content: string) => any;
         writeBuffer: (filePath: string, base64Data: string) => Promise<void>;
         stat: (filePath: string) => Promise<{
             size: number;
@@ -179,18 +179,18 @@ declare const tesserinAPI: {
     };
     api: {
         keys: {
-            list: () => Promise<any>;
+            list: () => any;
             create: (data: {
                 name: string;
                 permissions?: string[];
                 expiresAt?: string;
-            }) => Promise<any>;
-            revoke: (id: string) => Promise<any>;
-            delete: (id: string) => Promise<any>;
+            }) => any;
+            revoke: (id: string) => any;
+            delete: (id: string) => any;
         };
         server: {
-            start: (port?: number) => Promise<any>;
-            stop: () => Promise<any>;
+            start: (port?: number) => any;
+            stop: () => any;
             status: () => Promise<{
                 running: boolean;
                 port: number;
@@ -198,34 +198,46 @@ declare const tesserinAPI: {
         };
     };
     agents: {
-        list: () => Promise<any>;
-        statuses: () => Promise<any>;
-        register: (type: string, config?: Record<string, unknown>) => Promise<any>;
-        update: (id: string, updates: Record<string, unknown>) => Promise<any>;
-        remove: (id: string) => Promise<any>;
-        connect: (id: string) => Promise<any>;
-        disconnect: (id: string) => Promise<any>;
-        callTool: (agentId: string, toolName: string, args: Record<string, unknown>) => Promise<any>;
-        getTools: (agentId: string) => Promise<any>;
-        createToken: (agentId: string, name: string, permissions?: string[], expiresAt?: string) => Promise<any>;
-        getTokens: (agentId: string) => Promise<any>;
-        revokeToken: (agentId: string, tokenId: string) => Promise<any>;
+        list: () => any;
+        statuses: () => any;
+        register: (type: string, config?: Record<string, unknown>) => any;
+        update: (id: string, updates: Record<string, unknown>) => any;
+        remove: (id: string) => any;
+        connect: (id: string) => any;
+        disconnect: (id: string) => any;
+        callTool: (agentId: string, toolName: string, args: Record<string, unknown>) => any;
+        getTools: (agentId: string) => any;
+        createToken: (agentId: string, name: string, permissions?: string[], expiresAt?: string) => any;
+        getTokens: (agentId: string) => any;
+        revokeToken: (agentId: string, tokenId: string) => any;
     };
     kb: {
-        graph: () => Promise<any>;
-        export: () => Promise<any>;
-        search: (query: string, maxChunks?: number) => Promise<any>;
-        context: (maxNotes?: number) => Promise<any>;
-        noteConnections: (noteId: string) => Promise<any>;
+        graph: () => any;
+        export: () => any;
+        search: (query: string, maxChunks?: number) => any;
+        context: (maxNotes?: number) => any;
+        noteConnections: (noteId: string) => any;
     };
     onCanvasUpdated: (callback: (canvasId: string) => void) => (_e: Electron.IpcRendererEvent, canvasId: string) => void;
     offCanvasUpdated: (handler: (...args: any[]) => void) => void;
     updater: {
-        check: () => Promise<any>;
-        download: () => Promise<any>;
-        install: () => Promise<any>;
+        check: () => any;
+        download: () => any;
+        install: () => any;
         onStatus: (callback: (status: unknown) => void) => (_e: Electron.IpcRendererEvent, status: unknown) => void;
         offStatus: (handler: (...args: any[]) => void) => void;
+    };
+    terminal: {
+        spawn: (id: string, cwd?: string) => Promise<{
+            success: boolean;
+            pid?: number;
+            error?: string;
+        }>;
+        write: (id: string, data: string) => Promise<boolean>;
+        resize: (id: string, cols: number, rows: number) => Promise<boolean>;
+        kill: (id: string) => Promise<boolean>;
+        onData: (id: string, callback: (data: string) => void) => (_e: Electron.IpcRendererEvent, termId: string, data: string) => void;
+        offData: (handler: (...args: any[]) => void) => void;
     };
 };
 export type TesserinAPI = typeof tesserinAPI;
