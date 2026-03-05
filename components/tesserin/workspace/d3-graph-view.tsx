@@ -278,6 +278,12 @@ export function D3GraphView() {
   /** Tracks the previously rendered mode so we know when the layout is "fresh" */
   const prevModeRef = useRef<GraphMode | null>(null)
 
+  // Keep a ref for selection to avoid full re-renders on every click
+  const selectedNoteIdRef = useRef(selectedNoteId)
+  useEffect(() => {
+    selectedNoteIdRef.current = selectedNoteId
+  }, [selectedNoteId])
+
   /* ---- Main D3 render effect ---- */
   const renderGraph = useCallback(() => {
     if (!svgRef.current || !containerRef.current) return
@@ -451,18 +457,18 @@ export function D3GraphView() {
         .append("circle")
         .attr("r", (d) => Math.max(6, Math.min(18, 6 + d.linkCount * 2.5)))
         .attr("fill", (d) =>
-          d.id === selectedNoteId
+          d.id === selectedNoteIdRef.current
             ? "var(--accent-primary)"
             : "var(--graph-node)",
         )
         .attr("stroke", (d) =>
-          d.id === selectedNoteId
+          d.id === selectedNoteIdRef.current
             ? "var(--accent-primary)"
             : "var(--border-mid)",
         )
-        .attr("stroke-width", (d) => (d.id === selectedNoteId ? 2.5 : 1))
+        .attr("stroke-width", (d) => (d.id === selectedNoteIdRef.current ? 2.5 : 1))
         .attr("filter", (d) =>
-          d.id === selectedNoteId
+          d.id === selectedNoteIdRef.current
             ? "url(#gold-glow-active)"
             : "url(#gold-glow)",
         )
@@ -478,14 +484,14 @@ export function D3GraphView() {
         )
         .attr("text-anchor", "middle")
         .attr("fill", (d) =>
-          d.id === selectedNoteId ? "#FACC15" : "var(--text-primary)",
+          d.id === selectedNoteIdRef.current ? "#FACC15" : "var(--text-primary)",
         )
-        .attr("font-size", (d) => (d.id === selectedNoteId ? 12 : 10))
-        .attr("font-weight", (d) => (d.id === selectedNoteId ? 700 : 500))
+        .attr("font-size", (d) => (d.id === selectedNoteIdRef.current ? 12 : 10))
+        .attr("font-weight", (d) => (d.id === selectedNoteIdRef.current ? 700 : 500))
         .attr("font-family", "var(--font-sans)")
         .style("pointer-events", "none")
         .style("filter", "url(#text-glow)")
-        .style("opacity", (d) => (d.id === selectedNoteId ? 1 : 0.85))
+        .style("opacity", (d) => (d.id === selectedNoteIdRef.current ? 1 : 0.85))
         .style("transition", "opacity 0.25s, fill 0.25s, font-size 0.25s")
 
       // Hover: intensify glow + brighten label
@@ -503,7 +509,7 @@ export function D3GraphView() {
           .attr("font-weight", "700")
       })
       nodeGroup.on("mouseleave.glow", function (_event, d: any) {
-        if (d.id !== selectedNoteId) {
+        if (d.id !== selectedNoteIdRef.current) {
           const group = d3.select(this)
           group
             .select("circle")
@@ -604,18 +610,18 @@ export function D3GraphView() {
         .append("circle")
         .attr("r", (d) => Math.max(6, Math.min(18, 6 + d.linkCount * 2.5)))
         .attr("fill", (d) =>
-          d.id === selectedNoteId
+          d.id === selectedNoteIdRef.current
             ? "var(--accent-primary)"
             : "var(--graph-node)",
         )
         .attr("stroke", (d) =>
-          d.id === selectedNoteId
+          d.id === selectedNoteIdRef.current
             ? "var(--accent-primary)"
             : "var(--border-mid)",
         )
-        .attr("stroke-width", (d) => (d.id === selectedNoteId ? 2.5 : 1))
+        .attr("stroke-width", (d) => (d.id === selectedNoteIdRef.current ? 2.5 : 1))
         .attr("filter", (d) =>
-          d.id === selectedNoteId
+          d.id === selectedNoteIdRef.current
             ? "url(#gold-glow-active)"
             : "url(#gold-glow)",
         )
@@ -631,14 +637,14 @@ export function D3GraphView() {
         )
         .attr("text-anchor", "middle")
         .attr("fill", (d) =>
-          d.id === selectedNoteId ? "#FACC15" : "var(--text-primary)",
+          d.id === selectedNoteIdRef.current ? "#FACC15" : "var(--text-primary)",
         )
-        .attr("font-size", (d) => (d.id === selectedNoteId ? 12 : 10))
-        .attr("font-weight", (d) => (d.id === selectedNoteId ? 700 : 500))
+        .attr("font-size", (d) => (d.id === selectedNoteIdRef.current ? 12 : 10))
+        .attr("font-weight", (d) => (d.id === selectedNoteIdRef.current ? 700 : 500))
         .attr("font-family", "var(--font-sans)")
         .style("pointer-events", "none")
         .style("filter", "url(#text-glow)")
-        .style("opacity", (d) => (d.id === selectedNoteId ? 1 : 0.85))
+        .style("opacity", (d) => (d.id === selectedNoteIdRef.current ? 1 : 0.85))
 
       // Hover effects
       nodeGroup.on("mouseenter.glow", function () {
@@ -655,7 +661,7 @@ export function D3GraphView() {
           .attr("font-weight", "700")
       })
       nodeGroup.on("mouseleave.glow", function (_event, d: any) {
-        if (d.id !== selectedNoteId) {
+        if (d.id !== selectedNoteIdRef.current) {
           const group = d3.select(this)
           group
             .select("circle")
@@ -834,7 +840,42 @@ export function D3GraphView() {
         fitToPositions(positions, false)
       }
     }
-  }, [graph, mode, selectNote, selectedNoteId])
+  }, [graph, mode, selectNote])
+
+  /* ---- Selection change: update node styles without full re-render ---- */
+  useEffect(() => {
+    if (!svgRef.current) return
+    const svg = d3.select(svgRef.current)
+
+    // Update nodes
+    svg.selectAll(".graph-node circle")
+      .attr("fill", (d: any) =>
+        d.id === selectedNoteId
+          ? "var(--accent-primary)"
+          : "var(--graph-node)",
+      )
+      .attr("stroke", (d: any) =>
+        d.id === selectedNoteId
+          ? "var(--accent-primary)"
+          : "var(--border-mid)",
+      )
+      .attr("stroke-width", (d: any) => (d.id === selectedNoteId ? 2.5 : 1))
+      .attr("filter", (d: any) =>
+        d.id === selectedNoteId
+          ? "url(#gold-glow-active)"
+          : "url(#gold-glow)",
+      )
+
+    // Update text
+    svg.selectAll(".graph-node text")
+      .attr("fill", (d: any) =>
+        d.id === selectedNoteId ? "#FACC15" : "var(--text-primary)",
+      )
+      .attr("font-size", (d: any) => (d.id === selectedNoteId ? 12 : 10))
+      .attr("font-weight", (d: any) => (d.id === selectedNoteId ? 700 : 500))
+      .style("opacity", (d: any) => (d.id === selectedNoteId ? 1 : 0.85))
+
+  }, [selectedNoteId])
 
   /* ---- Re-render when graph, mode, or selection changes ---- */
   useEffect(() => {
