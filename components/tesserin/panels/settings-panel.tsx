@@ -714,6 +714,7 @@ export function SettingsPanel() {
             { value: "notes", label: "Notes" },
             { value: "canvas", label: "Canvas" },
             { value: "graph", label: "Graph" },
+            { value: "terminal", label: "Terminal" },
           ]}
         />
       </SettingRow>
