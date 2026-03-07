@@ -165,33 +165,33 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
       <div key={note.id} className="relative group" style={{ marginLeft: depth > 0 ? 12 : 0 }}>
         <button
           onClick={() => selectNote(note.id)}
-          className="w-full text-left px-3 py-2 rounded-xl mb-1 transition-all duration-150 flex items-start gap-2.5"
+          className="w-full text-left px-4 py-3 rounded-xl mb-1.5 transition-all duration-150 flex items-center gap-3.5"
           style={{
-            backgroundColor: isSelected ? "var(--accent-primary)" : "var(--bg-panel-inset)",
+            backgroundColor: isSelected ? "var(--accent-primary)" : "rgba(10,10,10,0.4)",
             color: isSelected ? "var(--text-on-accent)" : "var(--text-secondary)",
             boxShadow: isSelected ? "var(--input-inner-shadow)" : "none",
-            border: isSelected ? "none" : "1px solid var(--border-dark)",
+            border: isSelected ? "none" : "1px solid rgba(255,255,255,0.03)",
           }}
           aria-current={isSelected ? "true" : undefined}
         >
-          <FiFileText size={14} className="shrink-0 mt-0.5" style={{ opacity: isSelected ? 1 : 0.6 }} />
+          <FiFileText size={16} className="shrink-0" style={{ opacity: isSelected ? 1 : 0.4 }} />
           <div className="flex-1 min-w-0">
             <p
-              className="text-xs font-semibold truncate"
+              className="text-[13px] font-bold truncate"
               style={{ color: isSelected ? "var(--text-on-accent)" : "var(--text-primary)" }}
             >
               {note.title || "Untitled"}
             </p>
-            <p className="text-[10px] mt-0.5 truncate leading-normal" style={{ opacity: 0.6, color: isSelected ? "inherit" : "var(--text-tertiary)" }}>
-              {note.content.replace(/[#*`\[\]]/g, "").substring(0, 40) || "No content..."}
+            <p className="text-[11px] mt-0.5 truncate leading-normal" style={{ opacity: 0.5, color: isSelected ? "inherit" : "var(--text-tertiary)" }}>
+              {note.content.replace(/[#*`\[\]]/g, "").substring(0, 60) || "No content..."}
             </p>
             {/* Tags row */}
             {note.tags.length > 0 && (
-              <div className="flex gap-1 mt-1 flex-wrap">
+              <div className="flex gap-1.5 mt-2 flex-wrap">
                 {note.tags.map((tag) => (
                   <span
                     key={tag.id}
-                    className="text-[8px] px-1 py-0 rounded-full font-bold"
+                    className="text-[9px] px-1.5 py-0 rounded-full font-bold"
                     style={{
                       backgroundColor: isSelected ? "rgba(0,0,0,0.15)" : tag.color + "22",
                       color: isSelected ? "var(--text-on-accent)" : tag.color,
@@ -206,13 +206,14 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
           </div>
           {blCount > 0 && (
             <div 
-              className="flex items-center gap-0.5 px-1 rounded text-[9px] font-bold shrink-0 mt-0.5"
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold shrink-0"
               style={{ 
-                backgroundColor: isSelected ? "rgba(0,0,0,0.2)" : "var(--bg-panel)",
-                color: isSelected ? "var(--text-on-accent)" : "var(--accent-primary)" 
+                backgroundColor: isSelected ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.3)",
+                color: isSelected ? "var(--text-on-accent)" : "var(--accent-primary)",
+                border: isSelected ? "none" : "1px solid rgba(250,204,21,0.2)"
               }}
             >
-              <FiLink2 size={8} />
+              <FiLink2 size={10} />
               {blCount}
             </div>
           )}
@@ -315,11 +316,15 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <span className="truncate">{folder.name}</span>
+              <>
+                <span className="truncate">{folder.name}</span>
+                <span className="ml-auto text-[10px] flex items-center gap-1 opacity-60" style={{ color: "var(--text-tertiary)" }}>
+                  <span title={`${fNotes.length} notes`}>{fNotes.length}</span>
+                  <span className="opacity-30">/</span>
+                  <span title={`${childFolders.length} subfolders`}>{childFolders.length}</span>
+                </span>
+              </>
             )}
-            <span className="ml-auto text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-              {fNotes.length}
-            </span>
           </button>
           <div className="flex opacity-0 group-hover:opacity-60 transition-opacity">
             <button
@@ -469,8 +474,8 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
         ))}
       </div>
 
-      {/* Sort controls (all & folders views) */}
-      {viewMode !== "tags" && (
+      {/* Sort controls (matching view mode tabs style) */}
+      {viewMode === "all" && (
         <div className="px-3 pb-2 flex gap-1 shrink-0">
           {(
             [

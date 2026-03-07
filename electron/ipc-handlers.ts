@@ -620,7 +620,12 @@ export function registerIpcHandlers(): void {
             // Seed with $SHELL first so the user's preferred shell is the default
             const envShell = process.env.SHELL
             if (envShell && fs.existsSync(envShell)) {
-                shells.push({ name: `${path.basename(envShell)} (default)`, path: envShell })
+                try {
+                    const realPath = fs.realpathSync(envShell)
+                    shells.push({ name: `${path.basename(envShell)} (default)`, path: realPath })
+                } catch {
+                    shells.push({ name: `${path.basename(envShell)} (default)`, path: envShell })
+                }
             }
             // Parse /etc/shells for additional options
             try {
@@ -632,14 +637,24 @@ export function registerIpcHandlers(): void {
                 for (const line of lines) {
                     const sp = line.trim()
                     if (!sp.startsWith('/') || sp.startsWith('#')) continue
-                    if (shells.some(s => s.path === sp)) continue   // already added
-                    shells.push({ name: shellNames[path.basename(sp)] || path.basename(sp), path: sp })
+                    
+                    let resolvedPath = sp
+                    try {
+                        resolvedPath = fs.realpathSync(sp)
+                    } catch {}
+
+                    if (shells.some(s => s.path === resolvedPath)) continue   // already added
+                    shells.push({ name: shellNames[path.basename(sp)] || path.basename(sp), path: resolvedPath })
                 }
             } catch {
                 // /etc/shells not available — add common fallbacks
                 for (const sp of ['/bin/zsh', '/bin/bash', '/bin/sh']) {
-                    if (fs.existsSync(sp) && !shells.some(s => s.path === sp)) {
-                        shells.push({ name: path.basename(sp), path: sp })
+                    if (fs.existsSync(sp)) {
+                        let resolvedPath = sp
+                        try { resolvedPath = fs.realpathSync(sp) } catch {}
+                        if (!shells.some(s => s.path === resolvedPath)) {
+                            shells.push({ name: path.basename(sp), path: resolvedPath })
+                        }
                     }
                 }
             }

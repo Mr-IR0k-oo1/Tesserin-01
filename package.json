@@ -18,7 +18,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "mcp:build": "cd tesserin-mcp && node --experimental-strip-types build.ts",
+    "mcp:start": "node tesserin-mcp/dist/index.js",
+    "mcp:start:http": "node tesserin-mcp/dist/index.js --http",
+    "mcp:dev": "node --watch tesserin-mcp/dist/index.js"
   },
   "build": {
     "appId": "com.tesserin.app",
@@ -42,14 +46,12 @@
         {
           "target": "dmg",
           "arch": [
-            "x64",
             "arm64"
           ]
         },
         {
           "target": "zip",
           "arch": [
-            "x64",
             "arm64"
           ]
         }
@@ -193,7 +195,8 @@
     "onlyBuiltDependencies": [
       "better-sqlite3",
       "electron",
-      "esbuild"
+      "esbuild",
+      "node-pty"
     ]
   }
 }

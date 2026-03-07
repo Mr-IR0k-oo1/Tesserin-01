@@ -8,7 +8,15 @@ import { WebLinksAddon } from "@xterm/addon-web-links"
 import "@xterm/xterm/css/xterm.css"
 import { useTerminalStore, type TerminalSession } from "@/lib/terminal-store"
 import { useTesserinTheme } from "@/components/tesserin/core/theme-provider"
-import { FiPlus, FiX, FiExternalLink, FiTerminal } from "react-icons/fi"
+import { FiPlus, FiX, FiExternalLink, FiTerminal, FiChevronDown } from "react-icons/fi"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from "@/components/ui/dropdown-menu"
 
 /* ------------------------------------------------------------------ */
 /*  Auth-URL detection                                                  */
@@ -91,9 +99,21 @@ export function TerminalView({ paneId }: TerminalViewProps) {
         const api = window.tesserin?.terminal
         if (!api?.getShells) return
         api.getShells().then((shells) => {
-            setAvailableShells(shells)
-            if (shells.length > 0 && !selectedShell) {
-                setSelectedShell(shells[0].path)
+            // Deduplicate shells by path and name
+            const seenPaths = new Set<string>()
+            const seenNames = new Set<string>()
+            const unique = shells.filter(s => {
+                const pathDuplicate = seenPaths.has(s.path)
+                const nameDuplicate = seenNames.has(s.name)
+                if (pathDuplicate || nameDuplicate) return false
+                seenPaths.add(s.path)
+                seenNames.add(s.name)
+                return true
+            })
+            
+            setAvailableShells(unique)
+            if (unique.length > 0 && !selectedShell) {
+                setSelectedShell(unique[0].path)
             }
         }).catch(() => { /* not in Electron context */ })
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -393,24 +413,48 @@ export function TerminalView({ paneId }: TerminalViewProps) {
 
                 {/* Shell picker — only shown when multiple shells are available */}
                 {availableShells.length > 1 && (
-                    <select
-                        value={selectedShell}
-                        onChange={(e) => setSelectedShell(e.target.value)}
-                        title="Select shell"
-                        className="flex-shrink-0 rounded-lg px-2 py-0.5 cursor-pointer transition-all"
-                        style={{
-                            background: "transparent",
-                            border: `1px solid ${borderClr}`,
-                            color: textMuted,
-                            fontSize: "11px",
-                            outline: "none",
-                            maxWidth: 120,
-                        }}
-                    >
-                        {availableShells.map((s) => (
-                            <option key={s.path} value={s.path}>{s.name}</option>
-                        ))}
-                    </select>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button
+                                className="group flex items-center gap-1.5 px-2.5 py-1 rounded-lg border cursor-pointer transition-all hover:opacity-80 flex-shrink-0"
+                                style={{
+                                    background: "transparent",
+                                    borderColor: borderClr,
+                                    color: textMuted,
+                                    fontSize: "11px",
+                                }}
+                                title="Select shell"
+                            >
+                                <span className="max-w-[100px] truncate">
+                                    {availableShells.find(s => s.path === selectedShell)?.name || "Select Shell"}
+                                </span>
+                                <FiChevronDown size={10} className="opacity-60" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent 
+                            align="end" 
+                            className="w-[180px]"
+                            style={{ 
+                                background: headerBg, 
+                                borderColor: borderClr,
+                                backdropFilter: "blur(20px)",
+                                WebkitBackdropFilter: "blur(20px)",
+                            }}
+                        >
+                            <DropdownMenuRadioGroup value={selectedShell} onValueChange={setSelectedShell}>
+                                {availableShells.map((s) => (
+                                    <DropdownMenuRadioItem
+                                        key={s.path}
+                                        value={s.path}
+                                        className="text-[11px] cursor-pointer"
+                                        style={{ color: s.path === selectedShell ? textColor : textMuted }}
+                                    >
+                                        {s.name}
+                                    </DropdownMenuRadioItem>
+                                ))}
+                            </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 )}
             </div>
 
