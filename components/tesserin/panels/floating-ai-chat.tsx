@@ -273,7 +273,7 @@ export function FloatingAIChat() {
                 }}
                 aria-label="Open AI Assistant"
             >
-                <HiOutlineSparkles size={24} style={{ color: "var(--text-on-accent)" }} />
+                <HiOutlineSparkles size="1.5rem" style={{ color: "var(--text-on-accent)" }} />
             </button>
         )
     }
@@ -283,8 +283,8 @@ export function FloatingAIChat() {
         <div
             className="fixed bottom-6 right-6 z-50 flex flex-col rounded-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300"
             style={{
-                width: "380px",
-                height: "520px",
+                width: "23.75rem",
+                height: "32.5rem",
                 background: "var(--bg-panel)",
                 boxShadow: "0 20px 60px rgba(0,0,0,0.35), 0 0 0 1px var(--border-dark)",
                 backdropFilter: "blur(20px)",
@@ -303,7 +303,7 @@ export function FloatingAIChat() {
                         className="w-8 h-8 rounded-lg flex items-center justify-center"
                         style={{ background: "linear-gradient(135deg, #facc15, #f59e0b)" }}
                     >
-                        <HiOutlineSparkles size={16} style={{ color: "var(--text-on-accent)" }} />
+                        <HiOutlineSparkles size="1rem" style={{ color: "var(--text-on-accent)" }} />
                     </div>
                     <div>
                         <div className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>
@@ -312,12 +312,12 @@ export function FloatingAIChat() {
                         <div className="flex items-center gap-1 text-[9px]">
                             {isConnected === true && (
                                 <span style={{ color: "#22c55e" }} className="flex items-center gap-0.5">
-                                    <FiWifi size={8} /> Connected
+                                    <FiWifi size="0.5rem" /> Connected
                                 </span>
                             )}
                             {isConnected === false && (
                                 <button onClick={checkConnection} style={{ color: "#ef4444" }} className="flex items-center gap-0.5 hover:opacity-80">
-                                    <FiWifiOff size={8} /> Reconnect
+                                    <FiWifiOff size="0.5rem" /> Reconnect
                                 </button>
                             )}
                             {isConnected === null && (
@@ -341,7 +341,7 @@ export function FloatingAIChat() {
                                     <option key={m} value={m}>{m}</option>
                                 ))}
                             </select>
-                            <FiChevronDown size={8} className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--text-tertiary)" }} />
+                            <FiChevronDown size="0.5rem" className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--text-tertiary)" }} />
                         </div>
                     )}
                     <button
@@ -349,7 +349,7 @@ export function FloatingAIChat() {
                         className="skeuo-btn p-1.5 rounded-lg"
                         aria-label="Close AI chat"
                     >
-                        <FiX size={12} />
+                        <FiX size="0.75rem" />
                     </button>
                 </div>
             </div>
@@ -371,7 +371,7 @@ export function FloatingAIChat() {
                             >
                                 {msg.content}
                                 {msg.role === "assistant" && (msg as any).isError && (
-                                    <FiAlertTriangle className="inline-block ml-2 text-red-500" size={12} />
+                                    <FiAlertTriangle className="inline-block ml-2 text-red-500" size="0.75rem" />
                                 )}
                                 {msg.role === "assistant" && i === messages.length - 1 && isLoading && (
                                     <span className="inline-block ml-1 animate-pulse">▊</span>
@@ -388,7 +388,7 @@ export function FloatingAIChat() {
                                         style={{ color: insertedIdx === i ? "#22c55e" : "var(--accent-primary)" }}
                                         title={selectedNoteId ? `Insert into "${selectedNote?.title}"` : "Select a note first"}
                                     >
-                                        {insertedIdx === i ? <FiCheck size={8} /> : <FiPlus size={8} />}
+                                        {insertedIdx === i ? <FiCheck size="0.5rem" /> : <FiPlus size="0.5rem" />}
                                         {insertedIdx === i ? "Inserted!" : "Insert"}
                                     </button>
                                     <button
@@ -396,7 +396,7 @@ export function FloatingAIChat() {
                                         className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium hover:opacity-80"
                                         style={{ color: copiedIdx === i ? "#22c55e" : "var(--text-tertiary)" }}
                                     >
-                                        {copiedIdx === i ? <FiCheck size={8} /> : <FiCopy size={8} />}
+                                        {copiedIdx === i ? <FiCheck size="0.5rem" /> : <FiCopy size="0.5rem" />}
                                         {copiedIdx === i ? "Copied" : "Copy"}
                                     </button>
                                 </div>
@@ -411,7 +411,7 @@ export function FloatingAIChat() {
             <div className="p-3 shrink-0" style={{ borderTop: "1px solid var(--border-dark)" }}>
                 {selectedNote && (
                     <div className="text-[9px] mb-1.5 px-1 truncate flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
-                        <FiFileText size={10} />
+                        <FiFileText size="0.625rem" />
                         {selectedNote.title}
                     </div>
                 )}
@@ -438,7 +438,7 @@ export function FloatingAIChat() {
                         className="absolute right-1.5 top-1/2 -translate-y-1/2 skeuo-btn p-1.5 rounded-lg disabled:opacity-30"
                         aria-label="Send message"
                     >
-                        {isLoading ? <FiLoader size={12} className="animate-spin" /> : <FiSend size={12} />}
+                        {isLoading ? <FiLoader size="0.75rem" className="animate-spin" /> : <FiSend size="0.75rem" />}
                     </button>
                 </div>
             </div>

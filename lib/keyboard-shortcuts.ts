@@ -51,6 +51,10 @@ export const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
   // Split pane divider keyboard resize — active when a split is open
   { id: "split-shrink",      label: "Shrink Primary Pane",       defaultKeys: "Ctrl+ArrowLeft",  category: "editor" },
   { id: "split-grow",        label: "Grow Primary Pane",         defaultKeys: "Ctrl+ArrowRight", category: "editor" },
+  // UI Scaling / Zoom
+  { id: "ui-zoom-in",        label: "Zoom In",                  defaultKeys: "Ctrl+Equal",      category: "navigation" },
+  { id: "ui-zoom-out",       label: "Zoom Out",                 defaultKeys: "Ctrl+Minus",      category: "navigation" },
+  { id: "ui-zoom-reset",     label: "Reset Zoom",               defaultKeys: "Ctrl+0",          category: "navigation" },
 ]
 
 /* ------------------------------------------------------------------ */

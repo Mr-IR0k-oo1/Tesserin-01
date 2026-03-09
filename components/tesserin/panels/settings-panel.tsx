@@ -382,7 +382,7 @@ function Kbd({ children }: { children: string }) {
 
 export function SettingsPanel() {
   const { notes } = useNotes()
-  const { setTheme } = useTesserinTheme()
+  const { setTheme, setUiScale, uiScale } = useTesserinTheme()
   const createAPI = usePluginAPI()
   const [activeSection, setActiveSection] = useState<SectionId>("general")
   const [settings, setSettings] = useState<SettingsValues>({ ...DEFAULTS })
@@ -390,6 +390,11 @@ export function SettingsPanel() {
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+
+  // Sync settings state with uiScale from theme context (handles shortcut key updates)
+  useEffect(() => {
+    setSettings(prev => ({ ...prev, "appearance.uiScale": String(uiScale) }))
+  }, [uiScale])
   const [aiStatus, setAiStatus] = useState<"checking" | "connected" | "disconnected" | null>(null)
   const [aiModels, setAiModels] = useState<string[]>([])
 
@@ -566,7 +571,11 @@ export function SettingsPanel() {
     if (key === "appearance.theme") {
       setTheme(value)
     }
-  }, [setTheme])
+    if (key === "appearance.uiScale") {
+      const scale = parseInt(value, 10)
+      if (!isNaN(scale)) setUiScale(scale)
+    }
+  }, [setTheme, setUiScale])
 
   /** Update and immediately persist a setting (for toggles that should take effect instantly) */
   const updateImmediate = useCallback((key: SettingKey, value: string) => {
@@ -575,7 +584,11 @@ export function SettingsPanel() {
     if (key === "appearance.theme") {
       setTheme(value)
     }
-  }, [setTheme])
+    if (key === "appearance.uiScale") {
+      const scale = parseInt(value, 10)
+      if (!isNaN(scale)) setUiScale(scale)
+    }
+  }, [setTheme, setUiScale])
 
   /* ---- Save all settings ---- */
   const saveSettings = useCallback(async () => {

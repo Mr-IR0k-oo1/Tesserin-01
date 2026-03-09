@@ -122,13 +122,13 @@ export function LeftDock({
   return (
     <div
       className="m-3 mr-0 flex-shrink-0 z-30 flex flex-col gap-4 transition-all duration-300 ease-in-out"
-      style={{ width: expanded ? 200 : 72 }}
+      style={{ width: expanded ? "12.5rem" : "4.5rem" }}
     >
       <SkeuoPanel className="h-full flex flex-col py-6 gap-6 overflow-hidden">
         {/* Brand logo + app name */}
         <div className={`flex items-center gap-3 ${expanded ? "px-5" : "justify-center px-2"}`}>
           <div className="cursor-pointer hover:scale-110 transition-transform duration-300 flex-shrink-0">
-            <TesserinLogo size={36} animated />
+            <TesserinLogo size="2.25rem" animated />
           </div>
           {expanded && (
             <span
@@ -169,8 +169,8 @@ export function LeftDock({
                     aria-hidden="true"
                   />
                 )}
-                <AnimatedIcon animation={TAB_ANIM[item.id] || "bounce"} size={20}>
-                  <item.icon size={20} className="flex-shrink-0" />
+                <AnimatedIcon animation={TAB_ANIM[item.id] || "bounce"} size="1.25rem">
+                  <item.icon size="1.25rem" className="flex-shrink-0" />
                 </AnimatedIcon>
                 {expanded && (
                   <span
@@ -218,8 +218,8 @@ export function LeftDock({
                 className={`skeuo-btn flex-1 flex items-center gap-3 px-3.5 h-10 rounded-xl ${splitActive ? "active" : ""}`}
                 aria-label={splitActive ? "Close split view" : "Open split view"}
               >
-                <AnimatedIcon animation="morph" size={18}>
-                  <FiColumns size={18} className="flex-shrink-0" />
+                <AnimatedIcon animation="morph" size="1.125rem">
+                  <FiColumns size="1.125rem" className="flex-shrink-0" />
                 </AnimatedIcon>
                 <span
                   className="text-sm font-medium whitespace-nowrap overflow-hidden"
@@ -236,8 +236,8 @@ export function LeftDock({
                   aria-label="Toggle split direction"
                 >
                   {splitDirection === "horizontal"
-                    ? <FiArrowDown size={14} style={{ color: "var(--text-tertiary)" }} />
-                    : <FiArrowRight size={14} style={{ color: "var(--text-tertiary)" }} />}
+                    ? <FiArrowDown size="0.875rem" style={{ color: "var(--text-tertiary)" }} />
+                    : <FiArrowRight size="0.875rem" style={{ color: "var(--text-tertiary)" }} />}
                 </button>
               )}
             </div>
@@ -249,8 +249,8 @@ export function LeftDock({
                   className={`skeuo-btn w-10 h-10 flex items-center justify-center rounded-full mx-auto ${splitActive ? "active" : ""}`}
                   aria-label={splitActive ? "Close split view" : "Open split view"}
                 >
-                  <AnimatedIcon animation="morph" size={18}>
-                    <FiColumns size={18} />
+                  <AnimatedIcon animation="morph" size="1.125rem">
+                    <FiColumns size="1.125rem" />
                   </AnimatedIcon>
                 </button>
               </TooltipTrigger>
@@ -282,8 +282,8 @@ export function LeftDock({
               className="skeuo-btn w-full flex items-center gap-3 px-3.5 h-10 rounded-xl"
               aria-label="Collapse sidebar"
             >
-              <AnimatedIcon animation="bounce" size={18}>
-                <ScribbledCollapse size={18} className="flex-shrink-0" />
+              <AnimatedIcon animation="bounce" size="1.125rem">
+                <ScribbledCollapse size="1.125rem" className="flex-shrink-0" />
               </AnimatedIcon>
               <span className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
                 Collapse
@@ -297,8 +297,8 @@ export function LeftDock({
                   className="skeuo-btn w-10 h-10 flex items-center justify-center rounded-full mx-auto"
                   aria-label="Expand sidebar"
                 >
-                  <AnimatedIcon animation="bounce" size={18}>
-                    <ScribbledExpand size={18} />
+                  <AnimatedIcon animation="bounce" size="1.125rem">
+                    <ScribbledExpand size="1.125rem" />
                   </AnimatedIcon>
                 </button>
               </TooltipTrigger>

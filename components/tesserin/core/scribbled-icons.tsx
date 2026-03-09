@@ -11,13 +11,13 @@ import React from "react"
  */
 
 interface IconProps {
-  size?: number
+  size?: number | string
   className?: string
   style?: React.CSSProperties
 }
 
 /** Notes — scribbled document with folded corner */
-export function ScribbledNotes({ size = 20, className, style }: IconProps) {
+export function ScribbledNotes({ size = "1.25rem", className, style }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
       <path
@@ -43,7 +43,7 @@ export function ScribbledNotes({ size = 20, className, style }: IconProps) {
 }
 
 /** Canvas / Compass — scribbled compass rose */
-export function ScribbledCanvas({ size = 20, className, style }: IconProps) {
+export function ScribbledCanvas({ size = "1.25rem", className, style }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"
@@ -70,7 +70,7 @@ export function ScribbledCanvas({ size = 20, className, style }: IconProps) {
 }
 
 /** Graph / Network — scribbled interconnected nodes */
-export function ScribbledGraph({ size = 20, className, style }: IconProps) {
+export function ScribbledGraph({ size = "1.25rem", className, style }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
       {/* Edges */}
@@ -92,7 +92,7 @@ export function ScribbledGraph({ size = 20, className, style }: IconProps) {
 }
 
 /** SAM / AI Sparkles — scribbled sparkle burst */
-export function ScribbledSparkles({ size = 20, className, style }: IconProps) {
+export function ScribbledSparkles({ size = "1.25rem", className, style }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
       {/* Main sparkle */}
@@ -128,7 +128,7 @@ export function ScribbledSparkles({ size = 20, className, style }: IconProps) {
 }
 
 /** Settings — scribbled gear with rough teeth */
-export function ScribbledSettings({ size = 20, className, style }: IconProps) {
+export function ScribbledSettings({ size = "1.25rem", className, style }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
       <path
@@ -146,7 +146,7 @@ export function ScribbledSettings({ size = 20, className, style }: IconProps) {
 }
 
 /** Search — scribbled magnifying glass */
-export function ScribbledSearch({ size = 20, className, style }: IconProps) {
+export function ScribbledSearch({ size = "1.25rem", className, style }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
       <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.7" />
@@ -156,7 +156,7 @@ export function ScribbledSearch({ size = 20, className, style }: IconProps) {
 }
 
 /** Plus — scribbled plus sign */
-export function ScribbledPlus({ size = 20, className, style }: IconProps) {
+export function ScribbledPlus({ size = "1.25rem", className, style }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
       <line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
@@ -166,7 +166,7 @@ export function ScribbledPlus({ size = 20, className, style }: IconProps) {
 }
 
 /** Zap / Lightning — scribbled bolt */
-export function ScribbledZap({ size = 20, className, style }: IconProps) {
+export function ScribbledZap({ size = "1.25rem", className, style }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
       <path
@@ -183,7 +183,7 @@ export function ScribbledZap({ size = 20, className, style }: IconProps) {
 }
 
 /** Layers — scribbled stacked layers */
-export function ScribbledLayers({ size = 20, className, style }: IconProps) {
+export function ScribbledLayers({ size = "1.25rem", className, style }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
       <path d="M12 4 L21 9 L12 14 L3 9 Z" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.7" strokeLinecap="round" strokeLinejoin="round" />
@@ -194,7 +194,7 @@ export function ScribbledLayers({ size = 20, className, style }: IconProps) {
 }
 
 /** Trash — scribbled bin */
-export function ScribbledTrash({ size = 20, className, style }: IconProps) {
+export function ScribbledTrash({ size = "1.25rem", className, style }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
       <path d="M4 7 L20 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.7" />
@@ -207,7 +207,7 @@ export function ScribbledTrash({ size = 20, className, style }: IconProps) {
 }
 
 /** Edit / Pencil — scribbled pencil */
-export function ScribbledEdit({ size = 20, className, style }: IconProps) {
+export function ScribbledEdit({ size = "1.25rem", className, style }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
       <path
@@ -225,7 +225,7 @@ export function ScribbledEdit({ size = 20, className, style }: IconProps) {
 }
 
 /** Copy / Duplicate — scribbled overlapping documents */
-export function ScribbledCopy({ size = 20, className, style }: IconProps) {
+export function ScribbledCopy({ size = "1.25rem", className, style }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
       <rect x="8" y="8" width="12" height="13" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.7" strokeLinecap="round" />
@@ -235,7 +235,7 @@ export function ScribbledCopy({ size = 20, className, style }: IconProps) {
 }
 
 /** Expand / Chevrons Right */
-export function ScribbledExpand({ size = 20, className, style }: IconProps) {
+export function ScribbledExpand({ size = "1.25rem", className, style }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
       <path d="M7 6 L13 12 L7 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
@@ -245,7 +245,7 @@ export function ScribbledExpand({ size = 20, className, style }: IconProps) {
 }
 
 /** Collapse / Chevrons Left */
-export function ScribbledCollapse({ size = 20, className, style }: IconProps) {
+export function ScribbledCollapse({ size = "1.25rem", className, style }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
       <path d="M17 6 L11 12 L17 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
@@ -255,7 +255,7 @@ export function ScribbledCollapse({ size = 20, className, style }: IconProps) {
 }
 
 /** Terminal — scribbled console/terminal icon */
-export function ScribbledTerminal({ size = 20, className, style }: IconProps) {
+export function ScribbledTerminal({ size = "1.25rem", className, style }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
       <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" />

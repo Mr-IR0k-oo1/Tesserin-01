@@ -16,7 +16,7 @@ type AnimationMode = "pulse" | "bounce" | "wobble" | "spin" | "morph" | "draw" |
 interface AnimatedIconProps {
   children: React.ReactNode
   animation?: AnimationMode
-  size?: number
+  size?: number | string
   color?: string
   /** Play animation once on mount */
   autoPlay?: boolean

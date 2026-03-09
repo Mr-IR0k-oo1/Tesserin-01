@@ -37,6 +37,7 @@ const DailyNotes = React.lazy(() =>
 import { NotesProvider, useNotes } from "@/lib/notes-store"
 import { useCanvasStore } from "@/lib/canvas-store"
 import { usePlugins } from "@/lib/plugin-system"
+import { useTesserinTheme } from "@/components/tesserin/core/theme-provider"
 import { DEFAULT_SHORTCUTS, matchesShortcut, loadCustomShortcuts, getEffectiveBinding } from "@/lib/keyboard-shortcuts"
 import { getStartupTip, formatShortcut, type TesserinTip } from "@/lib/tips"
 import { getSetting } from "@/lib/storage-client"
@@ -96,6 +97,7 @@ class ErrorBoundary extends Component<EBProps, EBState> {
  */
 
 function AppContent() {
+    const { uiScale, setUiScale } = useTesserinTheme()
     const [activeTab, setActiveTab] = useState<TabId>(() => {
         // Initial sync from localStorage (fastest)
         if (typeof window !== "undefined") {
@@ -336,6 +338,15 @@ function AppContent() {
                             if (splitState.isActive) closeSplit()
                             else openSplit()
                             break
+                        case "ui-zoom-in":
+                            setUiScale(Math.min(150, uiScale + 5))
+                            break
+                        case "ui-zoom-out":
+                            setUiScale(Math.max(75, uiScale - 5))
+                            break
+                        case "ui-zoom-reset":
+                            setUiScale(100)
+                            break
                     }
                     return
                 }
@@ -343,7 +354,7 @@ function AppContent() {
         }
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [shortcutActions, splitState.isActive, openSplit, closeSplit])
+    }, [shortcutActions, splitState.isActive, openSplit, closeSplit, uiScale, setUiScale])
 
     const handleSelectNote = useCallback(
         (noteId: string) => {

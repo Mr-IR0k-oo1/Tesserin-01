@@ -44,11 +44,11 @@ function ensureLogoStyles() {
  */
 
 interface TesserinLogoProps {
-  size?: number
+  size?: number | string
   animated?: boolean
 }
 
-export function TesserinLogo({ size = 48, animated = false }: TesserinLogoProps) {
+export function TesserinLogo({ size = "3rem", animated = false }: TesserinLogoProps) {
   const stroke = "var(--accent-primary)"
   const textFill = "var(--text-primary)"
 

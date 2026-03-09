@@ -174,7 +174,7 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
           }}
           aria-current={isSelected ? "true" : undefined}
         >
-          <FiFileText size={16} className="shrink-0" style={{ opacity: isSelected ? 1 : 0.4 }} />
+          <FiFileText size="1rem" className="shrink-0" style={{ opacity: isSelected ? 1 : 0.4 }} />
           <div className="flex-1 min-w-0">
             <p
               className="text-[13px] font-bold truncate"
@@ -213,7 +213,7 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
                 border: isSelected ? "none" : "1px solid rgba(250,204,21,0.2)"
               }}
             >
-              <FiLink2 size={10} />
+              <FiLink2 size="0.625rem" />
               {blCount}
             </div>
           )}
@@ -224,7 +224,7 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
           className="absolute right-1 top-1 w-5 h-5 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/10"
           style={{ color: isSelected ? "#000" : "var(--text-tertiary)" }}
         >
-          <FiTag size={10} />
+          <FiTag size="0.625rem" />
         </button>
         {/* Tag popover */}
         {tagPopoverNoteId === note.id && (
@@ -265,7 +265,7 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
                     className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors hover:bg-white/5"
                     style={{ color: "var(--text-on-obsidian)" }}
                   >
-                    <FiFolder size={10} />
+                    <FiFolder size="0.625rem" />
                     <span className="flex-1 text-left truncate">{f.name}</span>
                     {note.folderId === f.id && <span className="text-[10px]" style={{ color: "var(--accent-primary)" }}>✓</span>}
                   </button>
@@ -299,8 +299,8 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
             className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-semibold hover:opacity-80 transition-opacity"
             style={{ color: "var(--text-secondary)" }}
           >
-            {isExpanded ? <FiChevronDown size={12} /> : <FiChevronRight size={12} />}
-            <FiFolder size={12} style={{ color: "var(--accent-primary)" }} />
+            {isExpanded ? <FiChevronDown size="0.75rem" /> : <FiChevronRight size="0.75rem" />}
+            <FiFolder size="0.75rem" style={{ color: "var(--accent-primary)" }} />
             {renamingFolderId === folder.id ? (
               <input
                 autoFocus
@@ -333,7 +333,7 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
               style={{ color: "var(--text-tertiary)" }}
               title="Add subfolder"
             >
-              <FiPlus size={10} />
+              <FiPlus size="0.625rem" />
             </button>
             <button
               onClick={() => { setRenamingFolderId(folder.id); setRenamingFolderName(folder.name) }}
@@ -341,7 +341,7 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
               style={{ color: "var(--text-tertiary)" }}
               aria-label="Rename folder"
             >
-              <FiEdit2 size={10} />
+              <FiEdit2 size="0.625rem" />
             </button>
             <button
               onClick={() => deleteFolder(folder.id)}
@@ -349,7 +349,7 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
               style={{ color: "var(--text-tertiary)" }}
               aria-label="Delete folder"
             >
-              <FiTrash2 size={10} />
+              <FiTrash2 size="0.625rem" />
             </button>
           </div>
         </div>
@@ -382,7 +382,7 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
               className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-semibold"
               style={{ color: "var(--text-tertiary)" }}
             >
-              <FiFileText size={12} />
+              <FiFileText size="0.75rem" />
               <span>Unfiled</span>
               <span className="ml-auto text-[10px]">{rootNotes.length}</span>
             </div>
@@ -414,14 +414,14 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
             className="skeuo-btn w-7 h-7 flex items-center justify-center rounded-lg"
             aria-label="Create new note"
           >
-            <FiPlus size={14} />
+            <FiPlus size="0.875rem" />
           </button>
           <button
             onClick={onClose}
             className="skeuo-btn w-7 h-7 flex items-center justify-center rounded-lg"
             aria-label="Close notes panel"
           >
-            <FiX size={14} />
+            <FiX size="0.875rem" />
           </button>
         </div>
       </div>
@@ -429,7 +429,7 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
       {/* Search */}
       <div className="px-3 py-2 shrink-0">
         <div className="skeuo-inset flex items-center gap-2 px-3 py-1.5">
-          <FiSearch size={14} style={{ color: "var(--text-tertiary)" }} />
+          <FiSearch size="0.875rem" style={{ color: "var(--text-tertiary)" }} />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -444,7 +444,7 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
               className="opacity-50 hover:opacity-100 transition-opacity"
               aria-label="Clear search"
             >
-              <FiX size={12} style={{ color: "var(--text-secondary)" }} />
+              <FiX size="0.75rem" style={{ color: "var(--text-secondary)" }} />
             </button>
           )}
         </div>
@@ -468,7 +468,7 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
             aria-label={`View ${v.label}`}
             aria-pressed={viewMode === v.id}
           >
-            <v.icon size={11} />
+            <v.icon size="0.6875rem" />
             {v.label}
           </button>
         ))}
@@ -493,7 +493,7 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
               aria-label={`Sort by ${s.label}`}
               aria-pressed={sortMode === s.id}
             >
-              <s.icon size={11} />
+              <s.icon size="0.6875rem" />
               {s.label}
             </button>
           ))}
@@ -511,7 +511,7 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
               className="skeuo-btn w-5 h-5 flex items-center justify-center rounded"
               aria-label="Create tag"
             >
-              <FiPlus size={10} />
+              <FiPlus size="0.625rem" />
             </button>
           </div>
           {/* New tag form */}
@@ -598,7 +598,7 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
         <div className="px-3 pb-2 shrink-0">
           {showNewFolder ? (
             <div className="skeuo-inset flex items-center gap-2 px-2 py-1.5 rounded-lg">
-              <FiFolderPlus size={12} style={{ color: "var(--accent-primary)" }} />
+              <FiFolderPlus size="0.75rem" style={{ color: "var(--accent-primary)" }} />
               <input
                 autoFocus
                 value={newFolderName}
@@ -614,7 +614,7 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
               onClick={() => setShowNewFolder(true)}
               className="skeuo-btn w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs"
             >
-              <FiFolderPlus size={12} />
+              <FiFolderPlus size="0.75rem" />
               New Folder
             </button>
           )}
@@ -625,8 +625,8 @@ export function NoteSidebar({ visible, onClose }: NoteSidebarProps) {
       <div className="flex-1 overflow-y-auto custom-scrollbar px-2 pb-2">
         {displayNotes.length === 0 && (
           <div className="text-center py-8 flex flex-col items-center gap-3">
-            <AnimatedIcon animation="pulse" size={32} autoPlay>
-              <TesserinLogo size={32} animated={false} />
+            <AnimatedIcon animation="pulse" size="2rem" autoPlay>
+              <TesserinLogo size="2rem" animated={false} />
             </AnimatedIcon>
             <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
               {search ? "No matching notes" : activeTagFilter ? "No notes with this tag" : "No notes yet"}

@@ -23,12 +23,18 @@ interface ThemeContextValue {
   toggleTheme: () => void
   /** Explicitly set the theme string */
   setTheme: (theme: string) => void
+  /** Current UI scale percentage (75-150) */
+  uiScale: number
+  /** Set the UI scale percentage */
+  setUiScale: (scale: number) => void
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
   isDark: true,
   toggleTheme: () => { },
   setTheme: () => { },
+  uiScale: 100,
+  setUiScale: () => { },
 })
 
 /** Hook to consume the Tesserin theme context */
@@ -281,10 +287,21 @@ export function TesserinThemeProvider({
     return "dark"
   })
 
+  const [uiScale, setUiScaleState] = useState(100)
+
   useEffect(() => {
+    // Initial load of theme and uiScale
     getSetting("appearance.theme").then((val) => {
       if (val) setThemeState(val)
     })
+    
+    getSetting("appearance.uiScale").then((val) => {
+      if (val) {
+        const scale = parseInt(val, 10)
+        if (!isNaN(scale)) setUiScaleState(scale)
+      }
+    })
+
     // Restore custom theme CSS overrides on mount
     getActiveThemeId().then((themeId) => {
       const theme = getThemeById(themeId)
@@ -301,6 +318,16 @@ export function TesserinThemeProvider({
     })
   }, [])
 
+  // Real-time application of UI Scale
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // Base font size is 18px as defined in THEME_STYLES
+      const baseFontSize = 18
+      const scaledSize = (baseFontSize * uiScale) / 100
+      document.documentElement.style.fontSize = `${scaledSize}px`
+    }
+  }, [uiScale])
+
   const isDark = theme === "dark"
 
   const toggleTheme = useCallback(() => {
@@ -314,8 +341,13 @@ export function TesserinThemeProvider({
     setSetting("appearance.theme", newTheme).catch()
   }, [])
 
+  const setUiScale = useCallback((scale: number) => {
+    setUiScaleState(scale)
+    setSetting("appearance.uiScale", String(scale)).catch()
+  }, [])
+
   return (
-    <ThemeContext.Provider value={{ isDark, toggleTheme, setTheme }}>
+    <ThemeContext.Provider value={{ isDark, toggleTheme, setTheme, uiScale, setUiScale }}>
       <ThemeStyles />
       <div className={theme === "dark" ? "theme-dark" : "theme-light"}>
         {children}
